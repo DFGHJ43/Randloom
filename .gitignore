@@ -19,3 +19,6 @@ rng-tui.exe
 # Build directories
 build/
 cmake-build-debug/
+
+# Planning docs (not tracked)
+docs/rng-upgrade-plan.md
