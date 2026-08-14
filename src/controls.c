@@ -19,15 +19,17 @@
 #define LAMBDA_MAX 1e9
 
 int field_is_visible(int fid, DistType dist) {
+    /* Count and Seed are global parameters: visible for every distribution */
+    if (fid == FIELD_COUNT_NUM || fid == FIELD_SEED) return 1;
     switch (dist) {
     case DIST_UNIFORM:
-        return fid == FIELD_COUNT_NUM || fid == FIELD_MIN || fid == FIELD_MAX;
+        return fid == FIELD_MIN || fid == FIELD_MAX;
     case DIST_NORMAL:
-        return fid == FIELD_COUNT_NUM || fid == FIELD_MEAN || fid == FIELD_STDDEV;
+        return fid == FIELD_MEAN || fid == FIELD_STDDEV;
     case DIST_BERNOULLI:
-        return fid == FIELD_COUNT_NUM || fid == FIELD_PROB;
+        return fid == FIELD_PROB;
     case DIST_POISSON:
-        return fid == FIELD_COUNT_NUM || fid == FIELD_LAMBDA;
+        return fid == FIELD_LAMBDA;
     }
     return 0;
 }
@@ -59,6 +61,7 @@ void field_backspace(FieldId fid, TuiState *state) {
 
 void parse_fields(TuiState *state) {
     state->count  = (int)strtol(state->field_buf[FIELD_COUNT_NUM], NULL, 10);
+    state->seed   = strtoull(state->field_buf[FIELD_SEED], NULL, 10);
     state->min_val= (int)strtol(state->field_buf[FIELD_MIN],     NULL, 10);
     state->max_val= (int)strtol(state->field_buf[FIELD_MAX],     NULL, 10);
     state->mean   = strtod(state->field_buf[FIELD_MEAN],   NULL);
@@ -105,13 +108,15 @@ void draw_controls(TuiState *state) {
     draw_option(state, y + 4, "Poisson",   "P", state->dist == DIST_POISSON);
 
     static const char *labels[FIELD_COUNT] = {
-        "Count:  ", "Min:    ", "Max:    ", "Mean:   ", "StdDev: ", "Prob:   ", "Lambda: "
+        "Count:  ", "Seed:   ", "Min:    ", "Max:    ", "Mean:   ", "StdDev: ", "Prob:   ", "Lambda: "
     };
 
     int value_w = state->lw - 12;   /* label(8) + gap(2) + brackets(2) */
     if (value_w < 1) value_w = 1;
 
-    int ry = y + 7;
+    /* 8 fields (incl. Seed) start one row earlier than the old 7 so the
+       last field stays above the [ Generate ] button at y+14 */
+    int ry = y + 6;
     for (int i = 0; i < FIELD_COUNT; i++) {
         if (!field_is_visible(i, state->dist)) {
             term_goto(ry, x);

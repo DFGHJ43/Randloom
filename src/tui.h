@@ -20,11 +20,12 @@
 #define TERM_MIN_ROWS  22
 
 /* ── Input fields ─────────────────────────────────────── */
-#define FIELD_COUNT    7
+#define FIELD_COUNT    8
 #define FIELD_BUF_LEN  32
 
 typedef enum {
     FIELD_COUNT_NUM = 0,
+    FIELD_SEED,
     FIELD_MIN,
     FIELD_MAX,
     FIELD_MEAN,
@@ -65,6 +66,7 @@ typedef struct {
     double   stddev;
     double   prob;
     double   lambda;
+    unsigned long long seed;    /* 0 = auto (time-based); non-zero = fixed */
 
     /* results */
     double   results[MAX_RESULTS];

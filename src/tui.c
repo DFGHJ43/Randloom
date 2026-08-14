@@ -86,6 +86,7 @@ void tui_init(TuiState *state) {
     state->stddev       = 1.0;
     state->prob         = 0.5;
     state->lambda       = 1.0;
+    state->seed         = 0;
     state->result_count = 0;
     state->result_scroll= 0;
     state->focus_field  = FIELD_COUNT_NUM;
@@ -94,6 +95,7 @@ void tui_init(TuiState *state) {
     state->status[0]    = '\0';
 
     snprintf(state->field_buf[FIELD_COUNT_NUM], FIELD_BUF_LEN, "%d", state->count);
+    snprintf(state->field_buf[FIELD_SEED],     FIELD_BUF_LEN, "%llu", state->seed);
     snprintf(state->field_buf[FIELD_MIN],     FIELD_BUF_LEN, "%d", state->min_val);
     snprintf(state->field_buf[FIELD_MAX],     FIELD_BUF_LEN, "%d", state->max_val);
     snprintf(state->field_buf[FIELD_MEAN],    FIELD_BUF_LEN, "%.1f", state->mean);
@@ -104,7 +106,7 @@ void tui_init(TuiState *state) {
     for (int i = 0; i < FIELD_COUNT; i++)
         state->field_cursor[i] = (int)strlen(state->field_buf[i]);
 
-    rng_init((unsigned int)time(NULL));
+    rng_init(0);
     memset(state->results, 0, sizeof(state->results));
 }
 
@@ -229,7 +231,11 @@ static void do_generate(TuiState *state) {
     state->result_count = n;
     state->result_scroll = 0;
 
-    rng_init((unsigned int)time(NULL));
+    /* Seed 0 = auto: reseed from the clock every run. Non-zero = fixed:
+       the same seed (with same dist + params) reproduces the sequence. */
+    unsigned long long seed = state->seed;
+    if (seed == 0) seed = (unsigned long long)time(NULL);
+    rng_init(seed);
 
     if (state->dist == DIST_NORMAL) {
         for (int i = 0; i < n; i++)
@@ -245,10 +251,12 @@ static void do_generate(TuiState *state) {
             state->results[i] = (double)rng_uniform(state->min_val, state->max_val);
     }
 
-    snprintf(state->status, sizeof(state->status), "Gen %d %s numbers.", n,
+    snprintf(state->status, sizeof(state->status),
+             "Gen %d %s numbers. Seed %llu%s.", n,
              state->dist == DIST_NORMAL    ? "normal" :
              state->dist == DIST_BERNOULLI ? "bernoulli" :
-             state->dist == DIST_POISSON   ? "poisson" : "uniform");
+             state->dist == DIST_POISSON   ? "poisson" : "uniform",
+             seed, state->seed == 0 ? " (auto)" : "");
 }
 
 static void do_export(TuiState *state) {
@@ -430,7 +438,14 @@ void tui_run(void) {
             break;
 
         default:
-            if ((key >= '0' && key <= '9') || key == '-' || key == '.') {
+            /* Seed takes digits only: strtoull("-5") would otherwise wrap
+               to ULLONG_MAX, which looks like a plausible-but-wrong seed */
+            if (state.focus_field == FIELD_SEED) {
+                if (key >= '0' && key <= '9') {
+                    field_insert(FIELD_SEED, &state, (char)key);
+                    parse_fields(&state);
+                }
+            } else if ((key >= '0' && key <= '9') || key == '-' || key == '.') {
                 field_insert((FieldId)state.focus_field, &state, (char)key);
                 parse_fields(&state);
                 if (field_is_visible(state.focus_field, state.dist))

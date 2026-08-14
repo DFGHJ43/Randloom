@@ -5,11 +5,14 @@
 #ifndef RANDOM_H
 #define RANDOM_H
 
+#include <stdint.h>
+
 /*
- * Initialize the random number generator with a seed.
+ * Initialize the random number generator with a 64-bit seed.
  * Call once before generating numbers. If seed is 0, uses time(NULL).
+ * The seed is expanded into the 256-bit engine state via SplitMix64.
  */
-void rng_init(unsigned int seed);
+void rng_init(uint64_t seed);
 
 /*
  * Generate a uniformly distributed random integer in [min, max].
