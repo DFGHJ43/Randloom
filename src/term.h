@@ -15,7 +15,10 @@ void term_show_cursor(void);
 void term_flush(void);
 void term_sleep_ms(int ms);
 #ifdef _WIN32
-void term_enable_vt(void);
+/* Enable ANSI/VT processing on the Windows console.
+   Returns 0 on success; -1 if the console does not support it
+   (Windows 7/8) or stdout is not a console. */
+int term_enable_vt(void);
 #endif
 
 /* ── Terminal size ────────────────────────────────────── */

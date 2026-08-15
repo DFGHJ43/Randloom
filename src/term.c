@@ -6,6 +6,16 @@
  * KEY_UP/DOWN/LEFT/RIGHT/ESC: special key codes (256+)
  */
 
+/* Strict -std=c99 (the README build command) hides POSIX extensions like
+   usleep() in glibc/musl headers; GCC 14+ turns the resulting implicit
+   declaration into a hard error. Must be defined before any system header.
+   Harmless on Windows (and already defined by CMake's gnu99 mode). */
+#ifndef _WIN32
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#endif
+
 #include "term.h"
 
 #include <stdio.h>
@@ -53,12 +63,14 @@ void term_sleep_ms(int ms) {
 }
 
 #ifdef _WIN32
-void term_enable_vt(void) {
+int term_enable_vt(void) {
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hOut == INVALID_HANDLE_VALUE) return -1;
     DWORD dwMode = 0;
-    GetConsoleMode(hOut, &dwMode);
+    if (!GetConsoleMode(hOut, &dwMode)) return -1;
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hOut, dwMode);
+    if (!SetConsoleMode(hOut, dwMode)) return -1;
+    return 0;
 }
 #endif
 

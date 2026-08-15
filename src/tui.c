@@ -17,6 +17,35 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <signal.h>
+
+#ifdef _WIN32
+#include <io.h>       /* _isatty, _fileno */
+#else
+#include <unistd.h>   /* isatty */
+#endif
+
+/* ══════════════════════════════════════════════════════════
+ * Interrupt handling & startup checks
+ * ══════════════════════════════════════════════════════════ */
+
+/* Signal handlers only set this flag (async-signal-safe); the main loop
+   polls it and exits cleanly, so Ctrl+C / kill never leaves the terminal
+   hidden or the screen uncleared. */
+static volatile sig_atomic_t g_interrupted = 0;
+
+static void on_signal(int sig) {
+    (void)sig;
+    g_interrupted = 1;
+}
+
+static int stdin_is_tty(void) {
+#ifdef _WIN32
+    return _isatty(_fileno(stdin));
+#else
+    return isatty(STDIN_FILENO);
+#endif
+}
 
 /* ══════════════════════════════════════════════════════════
  * TUI lifecycle
@@ -60,9 +89,29 @@ void tui_recompute_layout(TuiState *state) {
 }
 
 void tui_init(TuiState *state) {
+    /* Redirected stdin would make the key-poll loops below spin on EOF
+       forever, so require an interactive terminal up front. */
+    if (!stdin_is_tty()) {
+        fprintf(stderr,
+                "rng-tui requires an interactive terminal (stdin is not a TTY).\n");
+        exit(1);
+    }
+
 #ifdef _WIN32
-    term_enable_vt();
+    if (term_enable_vt() != 0) {
+        term_show_cursor();
+        fprintf(stderr,
+                "rng-tui needs an ANSI/VT-capable console "
+                "(Windows 10+ / Windows Terminal).\n");
+        exit(1);
+    }
 #endif
+
+    /* Restore the terminal on every exit path, including Ctrl+C / kill */
+    atexit(tui_restore);
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+
     term_clear();
     term_hide_cursor();
 
@@ -327,19 +376,19 @@ void tui_run(void) {
     TuiState state;
     tui_init(&state);
 
-    while (state.running) {
+    while (state.running && !g_interrupted) {
         if (check_resize(&state) < 0) {
             /* Too small: show the overlay once, drain any keys pressed
                while it is up, then wait for the window to grow back.
                No redraw here — flashing it every frame is needless. */
             show_too_small(&state);
-            while (state.running && check_resize(&state) < 0) {
+            while (state.running && !g_interrupted && check_resize(&state) < 0) {
                 /* Keep draining keys the user presses while the overlay
                    is up, so none get replayed after the window grows */
                 while (kb_hit()) kb_get();
                 term_sleep_ms(200);
             }
-            if (!state.running) break;
+            if (!state.running || g_interrupted) break;
             /* check_resize() recomputed the layout and cleared the
                screen — fall through to draw the fresh frame */
         }
@@ -347,7 +396,7 @@ void tui_run(void) {
         draw_frame(&state);
 
         int resized = 0;
-        while (!kb_hit() && state.running) {
+        while (!kb_hit() && state.running && !g_interrupted) {
             term_sleep_ms(10);
             /* Detect resize while idle so a shrunken window never
                keeps showing a stale (garbled) frame */
@@ -356,7 +405,7 @@ void tui_run(void) {
                 break;
             }
         }
-        if (!state.running) break;
+        if (!state.running || g_interrupted) break;
 
         /* A resize ended the wait: loop back so the overlay is shown
            (if too small) or the frame is redrawn at the new size.

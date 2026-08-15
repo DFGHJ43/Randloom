@@ -17,4 +17,7 @@ add_executable(rng-tui
     src/graph/graph_poisson.c
 )
 
-target_link_libraries(rng-tui m)
+# `m` (libm) is a Unix library; MSVC/clang-cl have no m.lib
+if(NOT MSVC)
+    target_link_libraries(rng-tui m)
+endif()
