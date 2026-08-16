@@ -1,7 +1,10 @@
 # Random Number Generator (RNG)
 
 An interactive terminal-based random number generator written in C.
-Zero external dependencies — uses only ANSI escape codes and the C standard library.
+Zero external dependencies — ANSI escape codes plus the C standard library;
+Windows renders via the Win32 console API, with no ANSI/VT involved.
+On Windows 10/11 every console host works out of the box; on Windows 7/8,
+run it inside a terminal emulator such as ConEmu or Cmder.
 
 ## Screenshot
 
@@ -72,7 +75,7 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 ```
 src/
 ├── tui.c/h                     Main event loop, frame rendering, results panel
-├── term.c/h                    Terminal control (ANSI) + keyboard input
+├── term.c/h                    Terminal control (Win32 console API on Windows, ANSI elsewhere) + keyboard input
 ├── controls.c/h                Left panel: parameter fields, field editing
 ├── random.c/h                  Random number generation (xoshiro256** + SplitMix64)
 ├── stats.c/h                   Statistics (min, max, mean, stddev)
@@ -84,6 +87,19 @@ src/
     ├── graph_bernoulli.c/h     Bernoulli distribution PMF dual-bar
     └── graph_poisson.c/h       Poisson distribution PMF bar chart
 ```
+
+## Platform Notes
+
+- **Windows 10 / 11** (cmd.exe, Windows Terminal, ConEmu, other console
+  hosts): renders exclusively through the Win32 console API — one code path,
+  no ANSI/VT involved, no terminal emulator needed.
+- **Windows 7 / 8**: the native console window (cmd.exe's conhost) has
+  rendering problems with full-screen TUIs (viewport scrolling / ghost rows),
+  so run rng-tui inside a terminal emulator instead. ConEmu or Cmder are
+  recommended — both are free and support Windows 7 (Windows Terminal
+  requires Windows 10, so it is not available there). Any terminal host that
+  handles the Win32 console API correctly will do.
+- **Non-Windows** (Linux/macOS): ANSI escape codes as usual.
 
 ## License
 

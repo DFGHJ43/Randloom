@@ -130,10 +130,10 @@ void draw_controls(TuiState *state) {
         term_goto(ry, x + 10);
         printf("[");
         if (i == state->focus_field)
-            printf("\033[7m");
+            term_style_reverse();
         printf("%-*.*s", value_w, value_w, state->field_buf[i]);
         if (i == state->focus_field)
-            printf("\033[0m");
+            term_style_reset();
         printf("]");
 
         ry++;

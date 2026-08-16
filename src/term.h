@@ -1,7 +1,8 @@
 /*
  * term.h — Terminal control & keyboard input interface
  *
- * term_* : ANSI terminal ops  |  kb_* / read_key / KEY_* : keyboard input
+ * term_* : terminal ops (Win32 console API on Windows, ANSI elsewhere)
+ *          |  kb_* / read_key / KEY_* : keyboard input
  */
 
 #ifndef TERMINAL_H
@@ -15,11 +16,21 @@ void term_show_cursor(void);
 void term_flush(void);
 void term_sleep_ms(int ms);
 #ifdef _WIN32
-/* Enable ANSI/VT processing on the Windows console.
-   Returns 0 on success; -1 if the console does not support it
-   (Windows 7/8) or stdout is not a console. */
-int term_enable_vt(void);
+/* Initialize the console output path. Called once at startup.
+   Windows renders exclusively through the Win32 console API (works on
+   Windows 7 through 11, in conhost and ConPTY hosts like Windows
+   Terminal); no VT sequences are used, so there is one code path.
+   Returns 0 on success; -1 if stdout is not attached to a console
+   (redirected) — the caller should report an error and exit. */
+int term_console_init(void);
+void term_console_restore(void);
 #endif
+
+/* Style helpers (bold / reverse video / reset). On Windows they set the
+   console text attribute; elsewhere they emit ANSI escape codes. */
+void term_style_bold(void);
+void term_style_reverse(void);
+void term_style_reset(void);
 
 /* ── Terminal size ────────────────────────────────────── */
 /* Returns 0 on success. On failure fills *rows=24, *cols=80 and returns -1. */

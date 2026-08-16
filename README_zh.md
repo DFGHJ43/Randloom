@@ -1,7 +1,7 @@
 # 随机数生成器 (RNG)
 
 一个基于终端界面的 C 语言随机数生成器。
-零外部依赖，仅使用 ANSI 转义序列和 C 标准库。
+零外部依赖，使用 ANSI 转义序列和 C 标准库；Windows 上统一通过 Win32 控制台 API 渲染，不涉及 ANSI/VT（Windows 10/11 开箱即用；Windows 7/8 建议在 ConEmu 等终端模拟器中运行）。
 
 ## 截图
 
@@ -71,7 +71,7 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 ```
 src/
 ├── tui.c/h           主事件循环、画面渲染、结果面板
-├── term.c/h          终端控制 (ANSI) + 键盘输入
+├── term.c/h          终端控制 (Windows 用 Win32 控制台 API，其他平台用 ANSI) + 键盘输入
 ├── controls.c/h      左栏：参数字段、字段编辑
 ├── random.c/h        随机数生成 (xoshiro256** + SplitMix64)
 ├── stats.c/h         统计计算 (最小值、最大值、均值、标准差)
@@ -83,6 +83,12 @@ src/
     ├── graph_bernoulli.c/h   伯努利分布 PMF 双柱图
     └── graph_poisson.c/h     泊松分布 PMF 柱状图
 ```
+
+## 平台说明
+
+- **Windows 10 / 11**（cmd.exe、Windows Terminal、ConEmu 等其他控制台主机）：统一通过 Win32 控制台 API 渲染——单一代码路径，不涉及 ANSI/VT，无需终端模拟器。
+- **Windows 7 / 8**：原生控制台窗口（cmd.exe 的 conhost）对全屏 TUI 存在渲染问题（视口滚动、残影），建议在终端模拟器中运行。推荐 **ConEmu** 或 **Cmder**——两者均免费且支持 Windows 7（Windows Terminal 需要 Windows 10，7/8 上不可用）。任何能正确处理 Win32 控制台 API 的终端主机均可。
+- **非 Windows**（Linux/macOS）：照常使用 ANSI 转义序列。
 
 ## 协议
 

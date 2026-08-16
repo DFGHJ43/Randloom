@@ -83,9 +83,6 @@ typedef struct {
 
     /* running flag */
     int      running;
-
-    /* dirty flags for selective redraw */
-    int      graph_dirty;
 } TuiState;
 
 /* ── TUI API ──────────────────────────────────────────── */

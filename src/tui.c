@@ -98,19 +98,17 @@ void tui_init(TuiState *state) {
     }
 
 #ifdef _WIN32
-    if (term_enable_vt() != 0) {
+    /* -1 = stdout not attached to a console. Windows always renders via the
+       Win32 console API (one path, Windows 7 through 11); there is no VT
+       path to choose. */
+    if (term_console_init() < 0) {
         term_show_cursor();
         fprintf(stderr,
-                "rng-tui needs an ANSI/VT-capable console "
-                "(Windows 10+ / Windows Terminal).\n");
+                "rng-tui requires a console window "
+                "(stdout is not attached to a console).\n");
         exit(1);
     }
 #endif
-
-    /* Restore the terminal on every exit path, including Ctrl+C / kill */
-    atexit(tui_restore);
-    signal(SIGINT, on_signal);
-    signal(SIGTERM, on_signal);
 
     term_clear();
     term_hide_cursor();
@@ -127,6 +125,13 @@ void tui_init(TuiState *state) {
     }
     tui_recompute_layout(state);
 
+    /* Restore the terminal on every exit path, including Ctrl+C / kill.
+       Registered after the size check above: that path clears the screen
+       itself, and atexit would erase its "Terminal too small" message. */
+    atexit(tui_restore);
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+
     state->dist         = DIST_UNIFORM;
     state->count        = 1;
     state->min_val      = 0;
@@ -140,7 +145,6 @@ void tui_init(TuiState *state) {
     state->result_scroll= 0;
     state->focus_field  = FIELD_COUNT_NUM;
     state->running      = 1;
-    state->graph_dirty  = 1;
     state->status[0]    = '\0';
 
     snprintf(state->field_buf[FIELD_COUNT_NUM], FIELD_BUF_LEN, "%d", state->count);
@@ -160,6 +164,7 @@ void tui_init(TuiState *state) {
 }
 
 void tui_restore(void) {
+    term_style_reset();  /* before clear, so no leftover bold/reverse fills */
     term_clear();
     term_show_cursor();
     term_flush();
@@ -253,16 +258,20 @@ static void draw_frame(TuiState *state) {
     draw_controls(state);
     draw_results(state);
 
-    if (state->graph_dirty) {
-        draw_graph(state);
-        state->graph_dirty = 0;
-    }
+    /* The graph is redrawn unconditionally every frame: with selective
+       gating, a viewport shift (see ENABLE_WRAP_AT_EOL_OUTPUT in
+       term_console_init) would leave the old plot visibly drifting.
+       Cheap — a few hundred putchars, no intermediate flush. */
+    draw_graph(state);
 
     term_goto(state->status_y, state->lx);
-    if (state->status[0] != '\0')
-        printf("\033[1m%-*s\033[0m", state->term_cols - 2, state->status);
-    else
+    if (state->status[0] != '\0') {
+        term_style_bold();
+        printf("%-*s", state->term_cols - 2, state->status);
+        term_style_reset();
+    } else {
         printf("%-*s", state->term_cols - 2, "");
+    }
 
     term_flush();
 }
@@ -357,7 +366,6 @@ static int check_resize(TuiState *state) {
 
     tui_recompute_layout(state);
     term_clear();
-    state->graph_dirty = 1;
     if (state->result_scroll > state->result_count - state->result_max_show)
         state->result_scroll = state->result_count - state->result_max_show;
     if (state->result_scroll < 0) state->result_scroll = 0;
@@ -423,25 +431,21 @@ void tui_run(void) {
         case 'u': case 'U':
             state.dist = DIST_UNIFORM;
             state.focus_field = FIELD_COUNT_NUM;
-            state.graph_dirty = 1;
             snprintf(state.status, sizeof(state.status), "Switched to Uniform."); break;
 
         case 'n': case 'N':
             state.dist = DIST_NORMAL;
             state.focus_field = FIELD_COUNT_NUM;
-            state.graph_dirty = 1;
             snprintf(state.status, sizeof(state.status), "Switched to Normal."); break;
 
         case 'b': case 'B':
             state.dist = DIST_BERNOULLI;
             state.focus_field = FIELD_COUNT_NUM;
-            state.graph_dirty = 1;
             snprintf(state.status, sizeof(state.status), "Switched to Bernoulli."); break;
 
         case 'p': case 'P':
             state.dist = DIST_POISSON;
             state.focus_field = FIELD_COUNT_NUM;
-            state.graph_dirty = 1;
             snprintf(state.status, sizeof(state.status), "Switched to Poisson."); break;
 
         case 'g': case 'G':
@@ -482,8 +486,6 @@ void tui_run(void) {
         case '\b': case 127:
             field_backspace((FieldId)state.focus_field, &state);
             parse_fields(&state);
-            if (field_is_visible(state.focus_field, state.dist))
-                state.graph_dirty = 1;
             break;
 
         default:
@@ -497,8 +499,6 @@ void tui_run(void) {
             } else if ((key >= '0' && key <= '9') || key == '-' || key == '.') {
                 field_insert((FieldId)state.focus_field, &state, (char)key);
                 parse_fields(&state);
-                if (field_is_visible(state.focus_field, state.dist))
-                    state.graph_dirty = 1;
             }
             break;
         }
