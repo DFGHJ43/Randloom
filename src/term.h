@@ -47,4 +47,12 @@ int  kb_hit(void);
 int  kb_get(void);
 int  read_key(void);
 
+/* Raw-mode stdin control. On Unix this disables ICANON/ECHO for the whole
+   session so keys reach read_key() unedited (Backspace included); without
+   it the line discipline eats Backspace and echoes keystrokes into the UI.
+   No-ops on Windows, whose conio reads are raw already. Call
+   term_input_init() once at startup and term_input_restore() on exit. */
+void term_input_init(void);
+void term_input_restore(void);
+
 #endif /* TERMINAL_H */

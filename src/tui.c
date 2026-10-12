@@ -132,6 +132,11 @@ void tui_init(TuiState *state) {
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
 
+    /* Raw stdin for the whole session. Enabled after atexit(tui_restore) is
+       registered, and after the exit paths above that print a message
+       outside the alternate screen, so every exit restores the tty. */
+    term_input_init();
+
     state->dist         = DIST_UNIFORM;
     state->count        = 1;
     state->min_val      = 0;
@@ -168,6 +173,7 @@ void tui_restore(void) {
     term_clear();
     term_show_cursor();
     term_flush();
+    term_input_restore();
 }
 
 /* ══════════════════════════════════════════════════════════

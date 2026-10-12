@@ -4,6 +4,8 @@
  * term_*: clear screen, cursor positioning, show/hide cursor, styles.
  *   Windows renders exclusively through the Win32 console API (one path for
  *   every Windows console, 7 through 11); other platforms use ANSI escapes.
+ * term_input_init/restore: put stdin in raw mode for the whole session
+ *   (Windows consoles are raw already; no-ops there).
  * kb_hit/kb_get/read_key: cross-platform key reads (Windows conio / Unix termios)
  * KEY_UP/DOWN/LEFT/RIGHT/ESC: special key codes (256+)
  */
@@ -234,32 +236,61 @@ int term_get_size(int *rows, int *cols) {
 #ifdef _WIN32
 int kb_hit(void) { return _kbhit(); }
 int kb_get(void) { return _getch(); }
+
+/* Windows already reads keys one at a time through conio (_kbhit/_getch):
+   there is no canonical line mode or echo to turn off, so nothing to do. */
+void term_input_init(void) { }
+void term_input_restore(void) { }
 #else
+/*
+ * The terminal must stay in raw mode for the whole session. Doing the
+ * termios switch inside kb_hit()/kb_get() (on for one getchar(), then off
+ * again) leaves the tty in canonical mode with echo enabled while the event
+ * loop is polling. Keys typed in that window are edited by the line
+ * discipline before the program ever sees them: Backspace (0x7f = VERASE)
+ * just erases an empty input line and is swallowed, so deletion never
+ * reaches field_backspace() — digits pile up but nothing can be removed.
+ * Echo also splatters the user's keystrokes over the frame.
+ *
+ * ICANON/ECHO off, ISIG/ICRNL/etc. left alone so Ctrl+C and Enter still
+ * behave normally. The saved settings are restored by term_input_restore().
+ */
+static struct termios g_orig_termios;
+static int g_raw_active = 0;
+
+void term_input_init(void) {
+    if (g_raw_active) return;
+    if (tcgetattr(STDIN_FILENO, &g_orig_termios) != 0) return;
+
+    struct termios raw = g_orig_termios;
+    raw.c_lflag &= (unsigned int)~(ICANON | ECHO);
+    raw.c_cc[VMIN]  = 1;   /* one key per read, kept in the fd's nonblocking
+                              window only for kb_hit()'s poll */
+    raw.c_cc[VTIME] = 0;
+
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) == 0) g_raw_active = 1;
+}
+
+void term_input_restore(void) {
+    if (!g_raw_active) return;
+    tcsetattr(STDIN_FILENO, TCSANOW, &g_orig_termios);
+    g_raw_active = 0;
+}
+
 int kb_hit(void) {
-    struct termios oldt, newt;
     int ch, oldf;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= (unsigned int)~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
     oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
     ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     fcntl(STDIN_FILENO, F_SETFL, oldf);
+
     if (ch != EOF) { ungetc(ch, stdin); return 1; }
     return 0;
 }
 
 int kb_get(void) {
-    struct termios oldt, newt;
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= (unsigned int)~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    int ch = getchar();
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    return ch;
+    return getchar();
 }
 #endif
 
