@@ -1,7 +1,7 @@
 //! Left panel: distribution selector, parameter fields and action buttons.
 
 use crate::app::AppState;
-use crate::config::{DistType, FieldId};
+use crate::config::{DistType, FieldId, UniformMode};
 use crate::ui::frame::{Frame, Style};
 use crate::ui::layout::Layout;
 
@@ -11,6 +11,22 @@ fn draw_option(frame: &mut Frame, layout: &Layout, row: i32, dist: DistType, sel
         format!("{} {} ({})", mark, dist.display_name(), dist.hint())
     } else {
         format!("{} {}", mark, dist.display_name())
+    };
+    frame.put_padded(layout.lx + 2, row, layout.lw - 2, &text, Style::PLAIN);
+}
+
+/// Checkbox row for the uniform integer/continuous mode, shown between the
+/// distribution selector and the parameter fields.
+fn draw_uniform_mode(frame: &mut Frame, layout: &Layout, row: i32, mode: UniformMode) {
+    let mark = if mode.is_continuous() { "[x]" } else { "[ ]" };
+    let short = format!("{mark} Continuous");
+    let long = format!("{mark} Continuous (C)");
+    // Only append the key hint when the full row fits; never draw a clipped
+    // "(C" fragment at intermediate widths.
+    let text = if layout.lw - 2 >= long.len() as i32 {
+        long
+    } else {
+        short
     };
     frame.put_padded(layout.lx + 2, row, layout.lw - 2, &text, Style::PLAIN);
 }
@@ -29,6 +45,12 @@ pub fn draw(frame: &mut Frame, state: &AppState, layout: &Layout) {
             *dist,
             state.dist == *dist,
         );
+    }
+
+    // Row y+5 is free between the selector and the parameter block; it only
+    // carries content for the uniform distribution.
+    if state.dist == DistType::Uniform {
+        draw_uniform_mode(frame, layout, y + 5, state.params.uniform_mode);
     }
 
     let value_w = (layout.lw - 12).max(1);

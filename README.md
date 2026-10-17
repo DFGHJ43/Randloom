@@ -14,7 +14,10 @@ self-contained xoshiro256** implementation; the crate contains no `unsafe` code.
 ## Features
 
 - Three-column TUI layout: controls | graph | results
-- Uniform distribution: random integers in [min, max]
+- Uniform distribution: integer mode (the default, matching the C app) samples
+  integers in [min, max]; continuous mode samples real numbers in [min, max).
+  Press `C` while Uniform is selected to toggle; integer mode truncates decimal
+  Min/Max values toward zero.
 - Normal distribution: Box-Muller transform with configurable mean/stddev
 - Bernoulli distribution: 0/1 outcomes with configurable probability p
 - Poisson distribution: Knuth's algorithm (λ <= 10) and PTRS rejection
@@ -22,7 +25,12 @@ self-contained xoshiro256** implementation; the crate contains no `unsafe` code.
 - Real-time graphs of the probability density / mass functions, drawn with
   Unicode block elements (█, ▀, ▄) and box-drawing axes, so curves and bars
   come out solid and smooth instead of stair-stepped
-- Export results to CSV with timestamp filenames
+- Result numbers follow the distribution: Normal and continuous uniform values
+  use exactly six decimal places, switching to scientific notation for non-zero
+  values below 1e-6 (e.g. `1.234568e-07`); integer uniform, Bernoulli and
+  Poisson results keep the compact C `%g` format
+- Export results to CSV with timestamp filenames; the CSV uses the same
+  per-distribution number style as the result list
 - Reproducible results: set a fixed Seed (0 = auto, uses current time)
 
 ### Graph rendering
@@ -92,20 +100,21 @@ rejected by design.
 
 ### Key Bindings
 
-| Key            | Action                           |
-| -------------- | -------------------------------- |
-| `G`            | Generate random numbers          |
-| `E`            | Export results to CSV            |
-| `U`            | Switch to uniform distribution   |
-| `N`            | Switch to normal distribution    |
-| `B`            | Switch to Bernoulli distribution |
-| `P`            | Switch to Poisson distribution   |
-| `Tab`          | Cycle focus between input fields |
-| `Up` `Down`    | Scroll results                   |
-| `Left` `Right` | Move cursor in input fields      |
-| `Backspace`    | Delete character in input field  |
-| `Q` / `Esc`    | Quit                             |
-| `Ctrl+C`       | Quit (also restores the terminal) |
+| Key            | Action                                 |
+| -------------- | -------------------------------------- |
+| `G`            | Generate random numbers                |
+| `E`            | Export results to CSV                  |
+| `U`            | Switch to uniform distribution         |
+| `N`            | Switch to normal distribution          |
+| `B`            | Switch to Bernoulli distribution       |
+| `P`            | Switch to Poisson distribution         |
+| `C`            | Toggle uniform integer/continuous mode |
+| `Tab`          | Cycle focus between input fields       |
+| `Up` `Down`    | Scroll results                         |
+| `Left` `Right` | Move cursor in input fields            |
+| `Backspace`    | Delete character in input field        |
+| `Q` / `Esc`    | Quit                                   |
+| `Ctrl+C`       | Quit (also restores the terminal)      |
 
 ### Parameter Fields
 
@@ -113,16 +122,17 @@ rejected by design.
 | -------------- | -------------------------------------------------------------- |
 | Count          | How many numbers to generate (1–1000)                          |
 | Seed           | 0 = auto (time-based); non-zero = fixed, sequence reproducible |
-| Min / Max      | Uniform range `[min, max]`                                     |
+| Min / Max      | Integer `[min, max]` (decimals truncated) or real `[min, max)` |
 | Mean / StdDev  | Normal mean and standard deviation                             |
 | Prob           | Bernoulli probability p in [0, 1]                              |
 | Lambda         | Poisson rate λ                                                 |
 
 > Reproducibility: the same Seed with the same distribution, parameters and
-> Count yields the same integer sequence. The normal distribution uses the
-> platform `f64` math library, so its last bits may differ between operating
-> systems; integers from uniform, Bernoulli and Poisson are exact across
-> platforms. The status bar shows the seed actually used in auto mode.
+> Count yields the same sequence. The normal distribution uses the platform
+> `f64` math library, so its last bits may differ between operating systems;
+> integer uniform, Bernoulli and Poisson results are exact across platforms,
+> and continuous uniform values are reproducible from the same Seed and Min/Max
+> bounds. The status bar shows the seed actually used in auto mode.
 
 ## Project Structure
 
@@ -136,9 +146,9 @@ src/
 ├── input.rs                    Terminal-independent Key / InputEvent / Flow
 ├── rng.rs                      xoshiro256** + SplitMix64 engine
 ├── stats.rs                    min / max / mean / population stddev
-├── fmt.rs                      C printf "%g"-compatible formatting
+├── fmt.rs                      %g and six-decimal/scientific formatting
 ├── export.rs                   Timestamped single-column CSV export
-├── dist/                       Uniform / normal / Bernoulli / Poisson samplers
+├── dist/                       Uniform (int/real) / normal / Bernoulli / Poisson
 ├── term/                       crossterm terminal layer, input mapping, signals
 └── ui/                         Headless Frame model, layout, panels and graphs
     ├── frame.rs, glyphs.rs, layout.rs

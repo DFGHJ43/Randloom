@@ -5,7 +5,8 @@
 //! `INSTA_UPDATE=always cargo test --offline --test render_snapshots`.
 
 use randloom::app::AppState;
-use randloom::config::{DistType, FieldId};
+use randloom::config::{DistType, FieldId, UniformMode};
+use randloom::fmt::NumberStyle;
 use randloom::ui;
 
 fn uniform_state() -> AppState {
@@ -20,6 +21,29 @@ fn uniform_state() -> AppState {
     state
 }
 
+fn uniform_continuous_state() -> AppState {
+    let mut state = AppState::new();
+    state.set_field_text(FieldId::Count, "8");
+    state.set_field_text(FieldId::Seed, "42");
+    state.set_field_text(FieldId::Min, "-2.5");
+    state.set_field_text(FieldId::Max, "9.5");
+    state.params.uniform_mode = UniformMode::Continuous;
+    state.dist = DistType::Uniform;
+    state.result_style = NumberStyle::Decimal6;
+    state.results = vec![
+        0.841471,
+        -1.234_567_89e-7,
+        0.000001,
+        9.499999,
+        -2.499999,
+        3.25,
+        7.0,
+        0.0,
+    ];
+    state.status = "Gen 8 continuous uniform numbers. Seed 42.".to_string();
+    state
+}
+
 fn normal_state() -> AppState {
     let mut state = AppState::new();
     state.set_field_text(FieldId::Count, "8");
@@ -27,6 +51,7 @@ fn normal_state() -> AppState {
     state.set_field_text(FieldId::Mean, "0.0");
     state.set_field_text(FieldId::StdDev, "1.5");
     state.dist = DistType::Normal;
+    state.result_style = NumberStyle::Decimal6;
     state.results = vec![-1.5, -0.75, 0.0, 0.25, 0.5, 1.0, 1.25, 2.5];
     state.status = "Gen 8 normal numbers. Seed 42.".to_string();
     state
@@ -164,6 +189,80 @@ fn snapshot_1000_results_scrolled() {
         "80x24_1000_results_scrolled",
         ui::render_to_string(&state, 80, 24, true)
     );
+}
+
+#[test]
+fn snapshot_uniform_continuous_layouts() {
+    let state = uniform_continuous_state();
+    insta::assert_snapshot!(
+        "80x24_uniform_continuous_unicode",
+        ui::render_to_string(&state, 80, 24, true)
+    );
+    insta::assert_snapshot!(
+        "60x22_uniform_continuous_unicode",
+        ui::render_to_string(&state, 60, 22, true)
+    );
+    insta::assert_snapshot!(
+        "80x24_uniform_continuous_ascii",
+        ui::render_to_string(&state, 80, 24, false)
+    );
+}
+
+#[test]
+fn uniform_mode_checkbox_tracks_the_mode() {
+    let mut state = uniform_state();
+    let layout = ui::Layout::compute(80, 24);
+    let row = |frame: &ui::Frame, y: i32| -> String {
+        (0..layout.lw)
+            .map(|x| frame.get(layout.lx + x, y).expect("control row cell").ch)
+            .collect()
+    };
+
+    let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
+    assert!(row(&frame, 8).contains("[ ] Continuous (C)"));
+
+    state.params.uniform_mode = UniformMode::Continuous;
+    let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
+    assert!(row(&frame, 8).contains("[x] Continuous (C)"));
+
+    // Other distributions do not show the uniform mode row.
+    state.dist = DistType::Normal;
+    let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
+    assert_eq!(row(&frame, 8).trim(), "");
+}
+
+#[test]
+fn uniform_mode_hint_is_only_drawn_when_it_fits() {
+    // Left-panel widths 17, 18 and 19 cannot hold the 18-character
+    // "[x] Continuous (C)" row, so the hint must be omitted rather than
+    // clipped. 80x24 has a 22-column panel and shows the hint.
+    for (cols, rows) in [
+        (60, 22),
+        (67, 24),
+        (68, 24),
+        (70, 24),
+        (72, 24),
+        (74, 24),
+        (80, 24),
+    ] {
+        let layout = ui::Layout::compute(cols, rows);
+        let mut state = uniform_state();
+        state.params.uniform_mode = UniformMode::Continuous;
+        let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
+        let row: String = (0..layout.lw)
+            .map(|x| frame.get(layout.lx + x, 8).expect("mode row cell").ch)
+            .collect();
+        let row = row.trim_end();
+
+        assert!(row.contains("Continuous"), "{cols}x{rows}: {row:?}");
+        assert!(
+            !row.contains('(') || row.ends_with("(C)"),
+            "{cols}x{rows}: clipped hint {row:?}"
+        );
+        if layout.lw >= 20 {
+            assert!(row.ends_with("Continuous (C)"), "{cols}x{rows}: {row:?}");
+        }
+    }
 }
 
 #[test]

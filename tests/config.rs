@@ -1,8 +1,8 @@
 //! Parameter parsing, validation, field buffers and visibility.
 
 use randloom::config::{
-    DistType, FIELD_BUF_LEN, FIELD_COUNT, FieldBuf, FieldId, LAMBDA_MAX, Params, initial_fields,
-    parse_f64, parse_i32, parse_u64,
+    DistType, FIELD_BUF_LEN, FIELD_COUNT, FieldBuf, FieldId, LAMBDA_MAX, Params, UniformMode,
+    initial_fields, parse_f64, parse_i32, parse_u64,
 };
 
 fn fields_with(id: FieldId, text: &str) -> [FieldBuf; FIELD_COUNT] {
@@ -23,12 +23,49 @@ fn initial_fields_match_c_defaults() {
     let params = Params::from_fields(&fields);
     assert_eq!(params.count, 1);
     assert_eq!(params.seed, 0);
-    assert_eq!(params.min, 0);
-    assert_eq!(params.max, 100);
+    assert_eq!(params.min, 0.0);
+    assert_eq!(params.max, 100.0);
     assert_eq!(params.mean, 0.0);
     assert_eq!(params.stddev, 1.0);
     assert_eq!(params.prob, 0.5);
     assert_eq!(params.lambda, 1.0);
+    assert_eq!(params.uniform_mode, UniformMode::Integer);
+}
+
+#[test]
+fn uniform_bounds_accept_fractional_values() {
+    let mut fields = initial_fields();
+    fields[FieldId::Min as usize] = FieldBuf::new("-2.5");
+    fields[FieldId::Max as usize] = FieldBuf::new("7.25");
+    let params = Params::from_fields(&fields);
+
+    assert_eq!(params.min, -2.5);
+    assert_eq!(params.max, 7.25);
+    assert_eq!(params.uniform_real_bounds(), (-2.5, 7.25));
+
+    // The integer mode truncates toward zero, like C `strtol` did.
+    assert_eq!(params.uniform_i32_bounds(), (-2, 7));
+}
+
+#[test]
+fn integer_uniform_bounds_saturate_and_swap_for_reals() {
+    let mut params = Params {
+        min: 1.9e12,
+        max: -1.9e12,
+        ..Params::default()
+    };
+    params.validate();
+    assert_eq!(params.uniform_i32_bounds(), (i32::MAX, i32::MIN));
+    assert_eq!(params.uniform_real_bounds(), (-1.9e12, 1.9e12));
+
+    let mut params = Params {
+        min: f64::NAN,
+        max: f64::INFINITY,
+        ..Params::default()
+    };
+    params.validate();
+    assert_eq!(params.min, 0.0);
+    assert_eq!(params.max, 100.0);
 }
 
 #[test]

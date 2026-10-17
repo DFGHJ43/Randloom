@@ -5,7 +5,7 @@ pub mod normal;
 pub mod poisson;
 pub mod uniform;
 
-use crate::config::{DistType, MAX_RESULTS, Params};
+use crate::config::{DistType, MAX_RESULTS, Params, UniformMode};
 use crate::rng::Rng;
 
 /// Fill `out` with `params.count` samples of `dist`.
@@ -13,11 +13,19 @@ pub fn generate(dist: DistType, params: &Params, rng: &mut Rng, out: &mut Vec<f6
     out.clear();
     let n = params.count.clamp(1, MAX_RESULTS as i32) as usize;
     match dist {
-        DistType::Uniform => {
-            for _ in 0..n {
-                out.push(uniform::sample(rng, params.min, params.max) as f64);
+        DistType::Uniform => match params.uniform_mode {
+            UniformMode::Integer => {
+                let (min, max) = params.uniform_i32_bounds();
+                for _ in 0..n {
+                    out.push(uniform::sample(rng, min, max) as f64);
+                }
             }
-        }
+            UniformMode::Continuous => {
+                for _ in 0..n {
+                    out.push(uniform::sample_continuous(rng, params.min, params.max));
+                }
+            }
+        },
         DistType::Normal => {
             for _ in 0..n {
                 out.push(normal::sample(rng, params.mean, params.stddev));

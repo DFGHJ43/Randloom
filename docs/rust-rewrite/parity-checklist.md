@@ -39,23 +39,39 @@ deviations.
 - [x] Seed accepts digits only; numeric fields accept digits, `-`, `.`.
 - [x] Parsing/clamps: count 1..1000, prob 0..1, stddev default 1, lambda default
       1 and max 1e9, seed saturation.
-- [x] Results: clear rows, `(no results)`, `%3d: %g`, scroll clamp,
+- [x] Results: clear rows, `(no results)`, `%3d: <number>`, scroll clamp,
       `(N total, arrows)` hint truncated to panel width.
+- [x] Number display: Normal and continuous uniform results use six decimals
+      (scientific for non-zero values below `1e-6`); integer uniform, Bernoulli
+      and Poisson keep C `%g`; the style is stored with the results at
+      generation time, and CSV uses that same style.
 - [x] Graph area clearing, axes, titles, value legends and x-axis labels.
-- [x] Uniform: flat filled rectangle; labels min/max; PDF legend.
+- [x] Uniform integer mode (default): inclusive `[min, max]`, fractional
+      Min/Max truncated toward zero, reversed bounds swapped.
+- [x] Uniform continuous mode: real `[min, max)` using the 53-bit `next_f64`
+      stream; reversed bounds swapped; zero-width range returns the bound;
+      values stay strictly below `max` even for adjacent `f64` bounds.
+- [x] `C` toggles the uniform mode only for Uniform; controls checkbox row
+      `[ ]`/`[x] Continuous (C)` (the `(C)` hint is omitted, never clipped,
+      when the left panel cannot fit the 18-cell row); status messages
+      `Uniform mode: ...` and `Gen N continuous uniform numbers. Seed ...`.
+- [x] Uniform: flat filled rectangle; integer labels min/max and two-decimal
+      PDF legend; continuous `%g` title/labels and a `%g` legend for the PDF
+      value `1 / (max - min)`.
 - [x] Normal: bell curve sampled per half-cell column; mu/sigma title and
       labels; PDF legend.
 - [x] Bernoulli: dual bars with C proportions, labels and probability values.
 - [x] Poisson: PMF bars, 64-entry PMF cap, sampling step when bars overflow,
       `k_max`/lambda labels, PMF legend.
 - [x] Unicode block/box glyphs and ASCII fallback (`#`, `+ - | >`).
-- [x] Keys: G/E, U/N/B/P, Tab, Up/Down, Left/Right, Backspace, Q/Esc; Ctrl+C
-      quits and restores.
+- [x] Keys: G/E, U/N/B/P, C (uniform mode), Tab, Up/Down, Left/Right,
+      Backspace, Q/Esc; Ctrl+C quits and restores.
 - [x] Generate: parse fields, count clamp, auto seed, status line with actual
       seed and `(auto)`, reset scroll.
-- [x] Export: empty-result message, timestamped filename, one `%g` value per
-      line, failure message.
-- [x] Engine and integer distributions match C golden vectors exactly.
+- [x] Export: empty-result message, timestamped filename, one formatted value
+      per line (`%g` or six-decimal style), failure message.
+- [x] Engine and integer distributions match C golden vectors exactly;
+      continuous uniform with `[0, 1)` matches the `f64_seed42` engine vector.
 - [x] Normal golden vectors match within floating-point tolerance.
 - [x] Terminal restore on normal exit, Ctrl+C, Unix SIGINT/SIGTERM, panic,
       and error paths.
@@ -71,7 +87,10 @@ deviations.
 | Alternate screen | Exiting returns to the previous shell content instead of clearing the main screen. Running UI is unchanged. |
 | Unicode always used unless `RANDLOOM_ASCII=1` | Rust/crossterm writes Unicode through the console; Windows code-page probing is no longer needed. The ASCII renderer remains for compatibility/tests. |
 | Normal values are tolerance-matched, not bit-matched, across platforms | `ln`/`cos` come from the platform math library. Integer distributions remain exact. |
-| Result lines are clipped to the panel width | Prevents long `%g` values from overwriting the border at 60 columns. |
+| Uniform continuous mode | New extension not present in the C reference; adds a checkbox row under the Uniform selector. Integer mode remains the default, so sampling output and golden vectors are unchanged. |
+| Normal and continuous uniform results use six decimals (scientific for non-zero values below `1e-6`) | C used `%g` for every result; stable decimal places keep continuous values readable. Integer-valued distributions retain `%g`. |
+| CSV follows the per-distribution result style | C wrote `%g` for every value; matching the TUI avoids a second formatting rule. |
+| Result lines are clipped to the panel width | Prevents long values from overwriting the border at 60 columns. |
 | CSV write errors are reported | C ignored write errors after a successful open. |
 | `i32`/`u64` parsing clamps/saturates explicitly | Avoids C implementation-defined overflow conversions while preserving normal input behavior. |
 | C `output_console`/`output_stats` helpers are not ported | They were unused by the TUI; `stats` remains a library API for future non-interactive use. |
@@ -81,20 +100,25 @@ deviations.
 
 - `tests/rng_golden.rs`: raw `u64` and `f64` bit sequences from C.
 - `tests/distributions.rs`: exact uniform/Bernoulli/Poisson golden vectors,
-  normal tolerance, and statistical sanity checks.
-- `tests/fmt.rs`: `%g` cases captured from C `printf`.
+  continuous uniform via the `f64_seed42` engine vector, normal tolerance, and
+  statistical sanity checks.
+- `tests/fmt.rs`: `%g` cases captured from C `printf`, plus six-decimal and
+  scientific display cases.
 - `tests/config.rs`, `tests/app_keys.rs`, `tests/export.rs`: parsing,
-  visibility, editing, key actions, scrolling, filenames and CSV contents.
+  real-valued uniform bounds, visibility, editing, key actions including the
+  uniform mode, scrolling, filenames and both CSV number styles.
 - `tests/render_snapshots.rs`: 80x24 and 60x22 layouts for all distributions,
-  Unicode and ASCII, plus focus/empty/scroll states.
+  continuous uniform layouts, Unicode and ASCII, plus focus/empty/scroll
+  states.
 - `src/ui/{layout,frame,graph/canvas}.rs` unit tests: geometry and half-cell
   bounds.
 
 ## Manual smoke test
 
 1. Windows 10/11 (Windows Terminal and classic console) and Linux/macOS.
-2. Generate all four distributions; compare the graph and controls against
-   the C build from `master` at 80x24 and 60x22.
+2. Generate all four distributions; toggle continuous uniform with `C` and
+   verify its graph and number display. Compare the integer-mode graph and
+   sampling against the C build from `master` at 80x24 and 60x22.
 3. Fixed seed 42 twice → identical integer results; seed 0 twice → status shows
    different auto seeds and results differ; Tab order/edit/backspace work.
 4. Resize to below 60x22 and back; the overlay appears/disappears and no stale

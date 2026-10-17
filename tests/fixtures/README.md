@@ -19,6 +19,9 @@ committed with LF line endings via `.gitattributes`.
 - `normal_seed42.golden` is compared with a small tolerance because Box-Muller
   uses the platform math library (`ln`, `cos`); the RNG draw sequence itself is
   still exact.
+- The continuous uniform sampler has no separate fixture: with `[0, 1)` bounds
+  it is exactly `next_f64`, so `tests/distributions.rs` checks it bit-for-bit
+  against `f64_seed42.golden`.
 - Poisson vectors cover both Knuth (`lambda <= 10`) and PTRS (`lambda > 10`)
   branches, including a large `lambda` and a value just above the branch
   boundary.

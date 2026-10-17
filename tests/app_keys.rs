@@ -1,8 +1,9 @@
 //! App state machine tests: keys, tab order, editing, generation, scrolling.
 
 use randloom::app::AppState;
-use randloom::config::{DistType, FieldId};
+use randloom::config::{DistType, FieldId, UniformMode};
 use randloom::dist::uniform;
+use randloom::fmt::NumberStyle;
 use randloom::input::{Flow, Key};
 use randloom::rng::Rng;
 
@@ -160,4 +161,112 @@ fn enter_is_a_no_op() {
     let before = state.status.clone();
     assert_eq!(press(&mut state, Key::Enter), Flow::Continue);
     assert_eq!(state.status, before);
+}
+
+#[test]
+fn c_key_toggles_uniform_mode_only_for_uniform() {
+    let mut state = AppState::new();
+    assert_eq!(state.params.uniform_mode, UniformMode::Integer);
+
+    press(&mut state, Key::Char('c'));
+    assert_eq!(state.params.uniform_mode, UniformMode::Continuous);
+    assert_eq!(state.status, "Uniform mode: continuous.");
+
+    press(&mut state, Key::Char('C'));
+    assert_eq!(state.params.uniform_mode, UniformMode::Integer);
+    assert_eq!(state.status, "Uniform mode: integer.");
+
+    // The mode key is a no-op outside the uniform distribution.
+    press(&mut state, Key::Char('n'));
+    let status = state.status.clone();
+    press(&mut state, Key::Char('c'));
+    assert_eq!(state.params.uniform_mode, UniformMode::Integer);
+    assert_eq!(state.status, status);
+}
+
+#[test]
+fn continuous_uniform_generation_uses_real_bounds() {
+    let mut state = AppState::new();
+    state.set_field_text(FieldId::Count, "5");
+    state.set_field_text(FieldId::Seed, "42");
+    state.set_field_text(FieldId::Min, "-1.5");
+    state.set_field_text(FieldId::Max, "1.5");
+    press(&mut state, Key::Char('c'));
+
+    press(&mut state, Key::Char('g'));
+
+    assert_eq!(state.results.len(), 5);
+    assert!(state.status.contains("continuous uniform"));
+    assert!(state.status.contains("Seed 42"));
+
+    let mut rng = Rng::from_seed(42);
+    let expected: Vec<f64> = (0..5)
+        .map(|_| uniform::sample_continuous(&mut rng, -1.5, 1.5))
+        .collect();
+    assert_eq!(state.results, expected);
+    for value in &state.results {
+        assert!((-1.5..1.5).contains(value), "out of range: {value}");
+    }
+}
+
+#[test]
+fn editing_fields_preserves_uniform_mode() {
+    let mut state = AppState::new();
+    press(&mut state, Key::Char('c'));
+    state.set_field_text(FieldId::Min, "-2.5");
+    state.set_field_text(FieldId::Max, "7.5");
+
+    assert_eq!(state.params.uniform_mode, UniformMode::Continuous);
+    assert_eq!(state.params.min, -2.5);
+    assert_eq!(state.params.max, 7.5);
+}
+
+#[test]
+fn result_number_style_follows_distribution_and_mode() {
+    let mut state = AppState::new();
+    assert_eq!(state.value_style(), NumberStyle::Compact);
+
+    press(&mut state, Key::Char('c'));
+    assert_eq!(state.value_style(), NumberStyle::Decimal6);
+
+    press(&mut state, Key::Char('n'));
+    assert_eq!(state.value_style(), NumberStyle::Decimal6);
+
+    press(&mut state, Key::Char('u'));
+    assert_eq!(state.value_style(), NumberStyle::Decimal6);
+
+    press(&mut state, Key::Char('c'));
+    assert_eq!(state.value_style(), NumberStyle::Compact);
+
+    press(&mut state, Key::Char('p'));
+    assert_eq!(state.value_style(), NumberStyle::Compact);
+
+    press(&mut state, Key::Char('b'));
+    assert_eq!(state.value_style(), NumberStyle::Compact);
+}
+
+#[test]
+fn result_style_is_snapshotted_at_generation() {
+    let mut state = AppState::new();
+    state.set_field_text(FieldId::Count, "2");
+    state.set_field_text(FieldId::Seed, "7");
+
+    press(&mut state, Key::Char('g'));
+    assert_eq!(state.result_style, NumberStyle::Compact);
+
+    // Toggling the mode changes the selection style but not the stored style
+    // of the results that are already on screen.
+    press(&mut state, Key::Char('c'));
+    assert_eq!(state.value_style(), NumberStyle::Decimal6);
+    assert_eq!(state.result_style, NumberStyle::Compact);
+
+    press(&mut state, Key::Char('g'));
+    assert_eq!(state.result_style, NumberStyle::Decimal6);
+
+    // Switching distribution keeps the style of the existing results until
+    // they are regenerated.
+    press(&mut state, Key::Char('p'));
+    assert_eq!(state.result_style, NumberStyle::Decimal6);
+    press(&mut state, Key::Char('g'));
+    assert_eq!(state.result_style, NumberStyle::Compact);
 }

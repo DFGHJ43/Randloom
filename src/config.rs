@@ -77,6 +77,31 @@ impl fmt::Display for DistType {
     }
 }
 
+/// Uniform sampling mode: discrete integers (the C-parity default) or
+/// continuous real numbers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum UniformMode {
+    /// Integers in the inclusive `[min, max]` range.
+    #[default]
+    Integer,
+    /// Real numbers in the half-open `[min, max)` range.
+    Continuous,
+}
+
+impl UniformMode {
+    /// The other mode; used by the `C` toggle key.
+    pub fn toggled(self) -> Self {
+        match self {
+            UniformMode::Integer => UniformMode::Continuous,
+            UniformMode::Continuous => UniformMode::Integer,
+        }
+    }
+
+    pub fn is_continuous(self) -> bool {
+        matches!(self, UniformMode::Continuous)
+    }
+}
+
 /// Identifies one editable field. The order is the on-screen order and the
 /// Tab order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -192,16 +217,23 @@ impl FieldBuf {
 }
 
 /// Parsed and validated parameters.
+///
+/// `min`/`max` are real numbers so the continuous uniform mode can use
+/// fractional bounds; the integer uniform mode truncates them toward zero
+/// (see [`Params::uniform_i32_bounds`]). The uniform mode is not part of a
+/// field buffer, so [`Params::from_fields`] always yields the default
+/// [`UniformMode::Integer`]; the application copies the toggled mode back in.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Params {
     pub count: i32,
     pub seed: u64,
-    pub min: i32,
-    pub max: i32,
+    pub min: f64,
+    pub max: f64,
     pub mean: f64,
     pub stddev: f64,
     pub prob: f64,
     pub lambda: f64,
+    pub uniform_mode: UniformMode,
 }
 
 impl Default for Params {
@@ -209,12 +241,13 @@ impl Default for Params {
         Self {
             count: 1,
             seed: 0,
-            min: 0,
-            max: 100,
+            min: 0.0,
+            max: 100.0,
             mean: 0.0,
             stddev: 1.0,
             prob: 0.5,
             lambda: 1.0,
+            uniform_mode: UniformMode::Integer,
         }
     }
 }
@@ -225,12 +258,13 @@ impl Params {
         let mut params = Self {
             count: parse_i32(&fields[FieldId::Count as usize].text),
             seed: parse_u64(&fields[FieldId::Seed as usize].text),
-            min: parse_i32(&fields[FieldId::Min as usize].text),
-            max: parse_i32(&fields[FieldId::Max as usize].text),
+            min: parse_f64(&fields[FieldId::Min as usize].text),
+            max: parse_f64(&fields[FieldId::Max as usize].text),
             mean: parse_f64(&fields[FieldId::Mean as usize].text),
             stddev: parse_f64(&fields[FieldId::StdDev as usize].text),
             prob: parse_f64(&fields[FieldId::Prob as usize].text),
             lambda: parse_f64(&fields[FieldId::Lambda as usize].text),
+            uniform_mode: UniformMode::Integer,
         };
         params.validate();
         params
@@ -253,7 +287,36 @@ impl Params {
         if !self.mean.is_finite() {
             self.mean = 0.0;
         }
+        if !self.min.is_finite() {
+            self.min = 0.0;
+        }
+        if !self.max.is_finite() {
+            self.max = 100.0;
+        }
     }
+
+    /// Integer endpoints for the discrete uniform mode.
+    ///
+    /// Fractional field values truncate toward zero, matching how C `strtol`
+    /// parsed the old integer fields; values outside the `i32` range saturate.
+    pub fn uniform_i32_bounds(&self) -> (i32, i32) {
+        (trunc_i32(self.min), trunc_i32(self.max))
+    }
+
+    /// Sorted real endpoints for the continuous uniform mode. The sampler
+    /// swaps reversed bounds, just like the integer mode.
+    pub fn uniform_real_bounds(&self) -> (f64, f64) {
+        if self.min > self.max {
+            (self.max, self.min)
+        } else {
+            (self.min, self.max)
+        }
+    }
+}
+
+/// Truncate a real value toward zero and saturate it to the `i32` range.
+fn trunc_i32(value: f64) -> i32 {
+    value.trunc().clamp(i32::MIN as f64, i32::MAX as f64) as i32
 }
 
 /// Default field contents, matching the C initialization.
