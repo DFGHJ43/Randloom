@@ -1,9 +1,9 @@
 ﻿cmake_minimum_required(VERSION 3.10)
-project(RandomNumber C)
+project(Randloom C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(rng-tui
+add_executable(randloom
     src/tui.c
     src/term.c
     src/controls.c
@@ -20,5 +20,5 @@ add_executable(rng-tui
 
 # `m` (libm) is a Unix library; MSVC/clang-cl have no m.lib
 if(NOT MSVC)
-    target_link_libraries(rng-tui m)
+    target_link_libraries(randloom m)
 endif()
