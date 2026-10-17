@@ -1,5 +1,5 @@
 /*
- * tui.c — RNG TUI main module
+ * tui.c — Randloom TUI main module
  *
  * Event loop, frame compositing (box + three columns),
  * results panel, generate/export actions.
@@ -94,7 +94,7 @@ void tui_init(TuiState *state) {
        forever, so require an interactive terminal up front. */
     if (!stdin_is_tty()) {
         fprintf(stderr,
-                "rng-tui requires an interactive terminal (stdin is not a TTY).\n");
+                "randloom requires an interactive terminal (stdin is not a TTY).\n");
         exit(1);
     }
 
@@ -105,7 +105,7 @@ void tui_init(TuiState *state) {
     if (term_console_init() < 0) {
         term_show_cursor();
         fprintf(stderr,
-                "rng-tui requires a console window "
+                "randloom requires a console window "
                 "(stdout is not attached to a console).\n");
         exit(1);
     }
@@ -270,7 +270,7 @@ static void draw_frame(TuiState *state) {
     /* Keep the title inside the left panel so it never paints over the
        ┬ junction at div1 (matters at the 60-column minimum width). */
     term_goto(0, state->lx + 2);
-    printf("%.*s", state->lw - 4, "Random Number Generator");
+    printf("%.*s", state->lw - 4, "Randloom");
     term_goto(2, state->mx + 2);
     printf("Distribution Graph");
     term_goto(2, state->rx + 2);
@@ -347,7 +347,7 @@ static void do_export(TuiState *state) {
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
     char fname[64];
-    snprintf(fname, sizeof(fname), "rng_export_%04d%02d%02d_%02d%02d%02d.csv",
+    snprintf(fname, sizeof(fname), "randloom_export_%04d%02d%02d_%02d%02d%02d.csv",
              t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
              t->tm_hour, t->tm_min, t->tm_sec);
 
