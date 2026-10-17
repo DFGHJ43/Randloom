@@ -14,9 +14,19 @@
 - 正态分布：Box-Muller 变换，可配置均值和标准差
 - 伯努利分布：按概率 p 生成 0/1 结果
 - 泊松分布：Knuth 算法，可配置速率参数 λ
-- 实时 ASCII 概率密度/质量函数图形
+- 实时绘制概率密度/质量函数图形，使用 Unicode 块元素（█、▀、▄）与制表符坐标轴，曲线平滑、填充实心不呈阶梯状
 - CSV 导出，文件名带时间戳
 - 可指定随机种子（Seed 字段，0 = 自动），结果可复现
+
+### 图形渲染
+
+图形使用“半块”画布：每个字符格包含上下两个半格，用 `█`（全块）、`▀`（上半块）、`▄`（下半块）
+渲染。相当于在字符网格上获得 1×2 的纵向分辨率——比纯 `#` 字符画纵向清晰一倍，同时保持实心填充。
+坐标轴使用制表符 `│`、`─`、`└`、`→`，边框使用 `┌ ┬ ┐ ├ ┤ └ ┴ ┘` 系列；刻度标签与数值提示仍为 ASCII。
+
+需要字体包含 Block Elements 与 Box Drawing 区段——绝大多数等宽字体都支持。若 UTF-8 无法送达屏幕，
+图形会退化为每个字符一个 `#`，边框退化为 ASCII 的 `+ - |`：Windows 下会先尝试把控制台输出代码页
+切换为 UTF-8，切换失败时使用 ASCII 回退。
 
 ## 编译
 
@@ -24,7 +34,7 @@
 gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
-    src/graph/graph.c src/graph/graph_uniform.c \
+    src/graph/graph.c src/graph/block.c src/graph/graph_uniform.c \
     src/graph/graph_normal.c src/graph/graph_bernoulli.c \
     src/graph/graph_poisson.c -lm
 ```
@@ -72,12 +82,15 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 src/
 ├── tui.c/h           主事件循环、画面渲染、结果面板
 ├── term.c/h          终端控制 (Windows 用 Win32 控制台 API，其他平台用 ANSI) + 键盘输入
+├── chars.h           块元素与制表符的 UTF-8 常量
 ├── controls.c/h      左栏：参数字段、字段编辑
 ├── random.c/h        随机数生成 (xoshiro256** + SplitMix64)
 ├── stats.c/h         统计计算 (最小值、最大值、均值、标准差)
 ├── output.c/h        输出到控制台 / CSV 文件
 └── graph/
     ├── graph.c/h             图形区域分发 (清屏 + 路由)
+    ├── graph_axes.h          共用的制表符坐标轴渲染
+    ├── block.c/h             图形使用的半块画布
     ├── graph_uniform.c/h     均匀分布 PDF 图形
     ├── graph_normal.c/h      正态分布 PDF 钟形曲线
     ├── graph_bernoulli.c/h   伯努利分布 PMF 双柱图

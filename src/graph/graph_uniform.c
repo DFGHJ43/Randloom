@@ -5,6 +5,7 @@
  */
 
 #include "graph_uniform.h"
+#include "block.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -23,29 +24,23 @@ void draw_graph_uniform(const TuiState *state) {
 
     if (min >= max) return;
 
-    for (int i = 0; i <= gh; i++) {
-        term_goto(gy + gh - i, gx - 1);
-        putchar('|');
-    }
-
-    term_goto(gy + gh, gx);
-    for (int i = 0; i < gw; i++) putchar('-');
-    term_goto(gy + gh, gx + gw);
-    putchar('>');
+    draw_graph_axes(gx, gy, gh, gw);
 
     char title[48];
     snprintf(title, sizeof(title), "Uniform PDF  [%d, %d]", min, max);
     term_goto(gy - 1, gx);
     printf("%-*.*s", state->mw - 2, state->mw - 2, title);
 
-    int bar_h = gh - 1;
-    if (bar_h < 1) bar_h = 1;
-
-    for (int col = 0; col < gw; col++) {
-        for (int row = 0; row < bar_h; row++) {
-            term_goto(gy + gh - 1 - row, gx + col);
-            putchar('#');
-        }
+    /* The PDF is flat, so the bar is a solid rectangle: every half-cell of
+       the canvas gets set, which renders as a wall of full blocks. The
+       canvas covers rows gy+1..gy+gh-1 — the top plot row stays free for
+       the PDF value legend printed at (gy, mx) further down. */
+    BlockCanvas cv;
+    int canvas_rows = gh - 1;                /* top plot row = PDF legend */
+    if (block_init(&cv, gw, canvas_rows) == 0) {
+        block_rect(&cv, 0, 0, cv.cols, cv.rows * 2);
+        block_render(&cv, gy + 1, gx);
+        block_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);

@@ -1,10 +1,11 @@
 ﻿/*
  * graph_normal.c — Normal distribution PDF graph renderer
  *
- * draw_graph_normal: bell curve via Box-Muller PDF (28 sample columns)
+ * draw_graph_normal: bell curve sampled once per plot column
  */
 
 #include "graph_normal.h"
+#include "block.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -24,15 +25,7 @@ void draw_graph_normal(const TuiState *state) {
 
     if (sigma <= 0.0) return;
 
-    for (int i = 0; i <= gh; i++) {
-        term_goto(gy + gh - i, gx - 1);
-        putchar('|');
-    }
-
-    term_goto(gy + gh, gx);
-    for (int i = 0; i < gw; i++) putchar('-');
-    term_goto(gy + gh, gx + gw);
-    putchar('>');
+    draw_graph_axes(gx, gy, gh, gw);
 
     char title[48];
     snprintf(title, sizeof(title), "Normal PDF  mu=%.1f sigma=%.1f", mu, sigma);
@@ -44,19 +37,32 @@ void draw_graph_normal(const TuiState *state) {
 
     double pdf_max = 1.0 / (sigma * sqrt(2.0 * M_PI));
 
-    for (int col = 0; col < gw; col++) {
-        double x = x_min + (x_max - x_min) * ((double)col / (double)(gw - 1));
-        double z = (x - mu) / sigma;
-        double pdf = exp(-0.5 * z * z) / (sigma * sqrt(2.0 * M_PI));
+    /* Bell curve as a filled area on a half-block canvas: one half-cell
+       column per character column, two half-cells per row. Each column is
+       filled from the baseline up to its curve height, so the outline is
+       twice as smooth vertically as plain '#' art and the fill is solid.
+       The canvas covers rows gy+1..gy+gh-1: the top plot row stays free for
+       the PDF value legend printed at (gy, mx). */
+    BlockCanvas cv;
+    int canvas_rows = gh - 1;                /* top plot row = PDF legend */
+    if (block_init(&cv, gw, canvas_rows) == 0) {
+        int sub_w = cv.cols;
+        int sub_h = cv.rows * 2;
 
-        int h = (int)((pdf / pdf_max) * (double)(gh - 1) + 0.5);
-        if (h < 0) h = 0;
-        if (h > gh - 1) h = gh - 1;
+        for (int x = 0; x < sub_w; x++) {
+            double t = sub_w > 1 ? (double)x / (double)(sub_w - 1) : 0.0;
+            double xv = x_min + (x_max - x_min) * t;
+            double z = (xv - mu) / sigma;
+            double pdf = exp(-0.5 * z * z) / (sigma * sqrt(2.0 * M_PI));
 
-        for (int row = 0; row <= h; row++) {
-            term_goto(gy + gh - 1 - row, gx + col);
-            putchar('#');
+            int h = (int)((pdf / pdf_max) * (double)(sub_h - 1) + 0.5);
+            if (h < 0) h = 0;
+            if (h > sub_h - 1) h = sub_h - 1;
+
+            block_vspan(&cv, x, sub_h - 1 - h, sub_h - 1);
         }
+        block_render(&cv, gy + 1, gx);
+        block_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);

@@ -9,6 +9,7 @@
 #include "tui.h"
 #include "term.h"
 #include "controls.h"
+#include "chars.h"
 #include "graph/graph.h"
 #include "random.h"
 #include "output.h"
@@ -185,27 +186,39 @@ static void draw_box(const TuiState *state) {
     int h = state->term_rows;
     int d1 = state->div1;
     int d2 = state->div2;
+    int utf8 = term_utf8_supported();
 
-    term_goto(0, 0); putchar('+');
+    term_goto(0, 0);
+    if (utf8) fputs(UTF8_TL, stdout); else putchar('+');
     for (int c = 1; c <= w - 2; c++) {
-        if (c == d1 || c == d2) putchar('+');
-        else                    putchar('-');
+        if (c == d1 || c == d2) {
+            if (utf8) fputs(UTF8_TM, stdout); else putchar('+');
+        } else {
+            if (utf8) fputs(UTF8_HBAR, stdout); else putchar('-');
+        }
     }
-    term_goto(0, w - 1); putchar('+');
+    term_goto(0, w - 1);
+    if (utf8) fputs(UTF8_TR, stdout); else putchar('+');
 
     for (int r = 1; r <= h - 2; r++) {
-        term_goto(r, 0);      putchar('|');
-        term_goto(r, d1);     putchar('|');
-        term_goto(r, d2);     putchar('|');
-        term_goto(r, w - 1);  putchar('|');
+        const char *vbar = utf8 ? UTF8_VBAR : "|";
+        term_goto(r, 0);      fputs(vbar, stdout);
+        term_goto(r, d1);     fputs(vbar, stdout);
+        term_goto(r, d2);     fputs(vbar, stdout);
+        term_goto(r, w - 1);  fputs(vbar, stdout);
     }
 
-    term_goto(h - 1, 0); putchar('+');
+    term_goto(h - 1, 0);
+    if (utf8) fputs(UTF8_BL, stdout); else putchar('+');
     for (int c = 1; c <= w - 2; c++) {
-        if (c == d1 || c == d2) putchar('+');
-        else                    putchar('-');
+        if (c == d1 || c == d2) {
+            if (utf8) fputs(UTF8_BM, stdout); else putchar('+');
+        } else {
+            if (utf8) fputs(UTF8_HBAR, stdout); else putchar('-');
+        }
     }
-    term_goto(h - 1, w - 1); putchar('+');
+    term_goto(h - 1, w - 1);
+    if (utf8) fputs(UTF8_BR, stdout); else putchar('+');
 }
 
 static void draw_results(const TuiState *state) {
@@ -254,8 +267,10 @@ static void draw_results(const TuiState *state) {
 static void draw_frame(TuiState *state) {
     draw_box(state);
 
+    /* Keep the title inside the left panel so it never paints over the
+       ┬ junction at div1 (matters at the 60-column minimum width). */
     term_goto(0, state->lx + 2);
-    printf("Random Number Generator");
+    printf("%.*s", state->lw - 4, "Random Number Generator");
     term_goto(2, state->mx + 2);
     printf("Distribution Graph");
     term_goto(2, state->rx + 2);

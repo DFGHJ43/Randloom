@@ -6,8 +6,7 @@
 #define GRAPH_NORMAL_H
 
 #include "../tui.h"
-
-extern void term_goto(int row, int col);
+#include "graph_axes.h"
 
 void draw_graph_normal(const TuiState *state);
 

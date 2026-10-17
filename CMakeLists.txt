@@ -11,6 +11,7 @@ add_executable(rng-tui
     src/stats.c
     src/output.c
     src/graph/graph.c
+    src/graph/block.c
     src/graph/graph_uniform.c
     src/graph/graph_normal.c
     src/graph/graph_bernoulli.c
