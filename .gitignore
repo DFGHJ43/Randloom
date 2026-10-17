@@ -3,8 +3,8 @@
 /obj/
 
 # Executable
-rng-tui
-rng-tui.exe
+randloom
+randloom.exe
 
 # Output files
 *.txt
