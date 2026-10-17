@@ -36,6 +36,13 @@ void term_style_reset(void);
 /* Returns 0 on success. On failure fills *rows=24, *cols=80 and returns -1. */
 int term_get_size(int *rows, int *cols);
 
+/* Whether the output path can carry UTF-8 to the screen. The graph is drawn
+   with braille patterns (U+2800..U+28FF); where that cannot be rendered the
+   graph module falls back to ASCII '#' cells. Non-Windows terminals report 1;
+   on Windows the console output code page decides (term_console_init tries
+   to switch it to UTF-8 for the session). */
+int term_utf8_supported(void);
+
 /* ── Keyboard input ───────────────────────────────────── */
 #define KEY_UP      256
 #define KEY_DOWN    257

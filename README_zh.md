@@ -14,9 +14,19 @@
 - 正态分布：Box-Muller 变换，可配置均值和标准差
 - 伯努利分布：按概率 p 生成 0/1 结果
 - 泊松分布：Knuth 算法，可配置速率参数 λ
-- 实时 ASCII 概率密度/质量函数图形
+- 实时绘制概率密度/质量函数图形，使用 Unicode 盲文符号（每个字符 2×4 点阵），曲线平滑不呈阶梯状
 - CSV 导出，文件名带时间戳
 - 可指定随机种子（Seed 字段，0 = 自动），结果可复现
+
+### 图形渲染
+
+图中每个字符都是盲文点阵（U+2800..U+28FF），一个字符内嵌 2×4 个点：相比纯 `#` 字符画，
+横向上分辨率翻倍、纵向上提高四倍；而终端字符本身大约高宽比 2:1，因此这些点接近正方形网格。
+坐标轴、刻度标签与数值提示仍为 ASCII。
+
+需要字体包含 Braille Patterns 区段——绝大多数等宽字体都支持。若 UTF-8 无法送达屏幕，
+图形会退化为每个字符一个 `#`：Windows 下会先尝试把控制台输出代码页切换为 UTF-8，
+切换失败时使用 `#`。
 
 ## 编译
 
@@ -24,7 +34,7 @@
 gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
-    src/graph/graph.c src/graph/graph_uniform.c \
+    src/graph/graph.c src/graph/braille.c src/graph/graph_uniform.c \
     src/graph/graph_normal.c src/graph/graph_bernoulli.c \
     src/graph/graph_poisson.c -lm
 ```
@@ -78,6 +88,7 @@ src/
 ├── output.c/h        输出到控制台 / CSV 文件
 └── graph/
     ├── graph.c/h             图形区域分发 (清屏 + 路由)
+    ├── braille.c/h           图形使用的盲文点阵画布
     ├── graph_uniform.c/h     均匀分布 PDF 图形
     ├── graph_normal.c/h      正态分布 PDF 钟形曲线
     ├── graph_bernoulli.c/h   伯努利分布 PMF 双柱图

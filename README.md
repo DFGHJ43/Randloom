@@ -17,9 +17,24 @@ run it inside a terminal emulator such as ConEmu or Cmder.
 - Normal distribution: Box-Muller transform with configurable mean/stddev
 - Bernoulli distribution: 0/1 outcomes with configurable probability p
 - Poisson distribution: Knuth's algorithm with configurable rate λ
-- Real-time ASCII graphs of probability density functions
+- Real-time graphs of the probability density / mass functions, plotted with
+  Unicode braille patterns (a 2x4 dot matrix per cell) so curves and bars come
+  out smooth instead of stair-stepped
 - Export results to CSV with timestamp filenames
 - Reproducible results: set a fixed Seed (0 = auto, uses current time)
+
+### Graph rendering
+
+Every graph cell is a braille pattern (U+2800..U+28FF), which packs a 2x4 dot
+matrix into a single character: the plot gets twice the horizontal and four
+times the vertical resolution of plain `#` art, and because a character cell is
+roughly twice as tall as it is wide, the dots land on a near-square grid.
+Axes, labels and the value readout stay ASCII.
+
+This needs a font that covers the Braille Patterns block — most monospace fonts
+do. Where UTF-8 cannot reach the screen, the graph degrades to one `#` per
+touched cell: on Windows the console output code page is switched to UTF-8 for
+the session, and if that is refused, `#` cells are used.
 
 ## Build
 
@@ -27,7 +42,7 @@ run it inside a terminal emulator such as ConEmu or Cmder.
 gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
-    src/graph/graph.c src/graph/graph_uniform.c \
+    src/graph/graph.c src/graph/braille.c src/graph/graph_uniform.c \
     src/graph/graph_normal.c src/graph/graph_bernoulli.c \
     src/graph/graph_poisson.c -lm
 ```
@@ -82,6 +97,7 @@ src/
 ├── output.c/h                  Output to console / CSV file
 └── graph/
     ├── graph.c/h               Graph area dispatch (clear + route)
+    ├── braille.c/h             Braille dot-matrix canvas used by the graphs
     ├── graph_uniform.c/h       Uniform distribution PDF graph
     ├── graph_normal.c/h        Normal distribution PDF bell curve
     ├── graph_bernoulli.c/h     Bernoulli distribution PMF dual-bar

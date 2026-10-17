@@ -35,6 +35,7 @@ static HANDLE g_hOut = INVALID_HANDLE_VALUE;
 static WORD   g_default_attr = 0x07;            /* attrs at startup (color cmd) */
 static CONSOLE_CURSOR_INFO g_orig_cursor = { 100, TRUE };
 static DWORD  g_orig_mode = 0;                  /* output mode at startup */
+static UINT   g_orig_cp = 0;                    /* output code page at startup */
 
 /* Invariant: every Win32 console call that changes console state must run on
    an empty stdout buffer. printf/putchar only fill the CRT buffer while the
@@ -143,7 +144,20 @@ int term_console_init(void) {
        output explicitly and never relies on wrap. Restored at exit via
        atexit so the parent cmd.exe keeps wrapping long lines. */
     g_orig_mode = dwMode;
-    if (SetConsoleMode(g_hOut, dwMode & ~ENABLE_WRAP_AT_EOL_OUTPUT))
+    int mode_changed =
+        SetConsoleMode(g_hOut, dwMode & ~ENABLE_WRAP_AT_EOL_OUTPUT) != 0;
+
+    /* The graph is drawn with Unicode braille patterns (U+2800..U+28FF), so
+       the console has to decode stdout as UTF-8; a console left on a legacy
+       code page would show mojibake instead. Switch it for this session and
+       let term_console_restore() put the parent shell's page back. If the
+       switch is refused, term_utf8_supported() reports 0 and the graph
+       falls back to ASCII '#' cells. */
+    g_orig_cp = GetConsoleOutputCP();
+    if (!SetConsoleOutputCP(CP_UTF8))
+        g_orig_cp = 0;                          /* nothing to restore */
+
+    if (mode_changed || g_orig_cp != 0)
         atexit(term_console_restore);
 
     CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -161,8 +175,25 @@ int term_console_init(void) {
 void term_console_restore(void) {
     if (g_hOut != INVALID_HANDLE_VALUE && g_orig_mode != 0)
         SetConsoleMode(g_hOut, g_orig_mode);
+    if (g_orig_cp != 0)
+        SetConsoleOutputCP(g_orig_cp);
 }
 #endif
+
+int term_utf8_supported(void) {
+#ifdef _WIN32
+    /* Win32 console output is decoded with the console's *output* code page,
+       not the program's locale, so that page is what decides whether braille
+       patterns survive the trip to the screen. */
+    return (g_hOut != INVALID_HANDLE_VALUE &&
+            GetConsoleOutputCP() == CP_UTF8) ? 1 : 0;
+#else
+    /* Unix terminals render the bytes we write: the program emits UTF-8
+       directly and never translates through the locale, so UTF-8 works
+       regardless of LC_CTYPE. */
+    return 1;
+#endif
+}
 
 void term_style_bold(void) {
 #ifdef _WIN32

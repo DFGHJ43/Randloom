@@ -5,6 +5,7 @@
  */
 
 #include "graph_normal.h"
+#include "braille.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -44,19 +45,32 @@ void draw_graph_normal(const TuiState *state) {
 
     double pdf_max = 1.0 / (sigma * sqrt(2.0 * M_PI));
 
-    for (int col = 0; col < gw; col++) {
-        double x = x_min + (x_max - x_min) * ((double)col / (double)(gw - 1));
-        double z = (x - mu) / sigma;
-        double pdf = exp(-0.5 * z * z) / (sigma * sqrt(2.0 * M_PI));
+    /* Bell curve as a filled area on a braille canvas: two dots per cell
+       column, four per cell row. Each column is filled from the baseline up
+       to its curve height, so the outline is 4x smoother vertically than
+       the old '#' columns and the flanks stop looking stair-stepped. The
+       canvas covers rows gy+1..gy+gh-1: the top plot row stays free for the
+       PDF value legend printed at (gy, mx). */
+    BrailleCanvas cv;
+    int canvas_rows = gh - 1;                /* top plot row = PDF legend */
+    if (braille_init(&cv, gw, canvas_rows) == 0) {
+        int dot_w = cv.cols * 2;
+        int dot_h = cv.rows * 4;
 
-        int h = (int)((pdf / pdf_max) * (double)(gh - 1) + 0.5);
-        if (h < 0) h = 0;
-        if (h > gh - 1) h = gh - 1;
+        for (int x = 0; x < dot_w; x++) {
+            double t = (double)x / (double)(dot_w - 1);
+            double xv = x_min + (x_max - x_min) * t;
+            double z = (xv - mu) / sigma;
+            double pdf = exp(-0.5 * z * z) / (sigma * sqrt(2.0 * M_PI));
 
-        for (int row = 0; row <= h; row++) {
-            term_goto(gy + gh - 1 - row, gx + col);
-            putchar('#');
+            int h = (int)((pdf / pdf_max) * (double)(dot_h - 1) + 0.5);
+            if (h < 0) h = 0;
+            if (h > dot_h - 1) h = dot_h - 1;
+
+            braille_vspan(&cv, x, dot_h - 1 - h, dot_h - 1);
         }
+        braille_render(&cv, gy + 1, gx);
+        braille_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);

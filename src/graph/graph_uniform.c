@@ -5,6 +5,7 @@
  */
 
 #include "graph_uniform.h"
+#include "braille.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -38,14 +39,16 @@ void draw_graph_uniform(const TuiState *state) {
     term_goto(gy - 1, gx);
     printf("%-*.*s", state->mw - 2, state->mw - 2, title);
 
-    int bar_h = gh - 1;
-    if (bar_h < 1) bar_h = 1;
-
-    for (int col = 0; col < gw; col++) {
-        for (int row = 0; row < bar_h; row++) {
-            term_goto(gy + gh - 1 - row, gx + col);
-            putchar('#');
-        }
+    /* The PDF is flat, so the bar is a solid rectangle: every dot of the
+       braille canvas gets set. The canvas covers rows gy+1..gy+gh-1 — the
+       top plot row stays free for the PDF value legend printed at (gy, mx)
+       further down. */
+    BrailleCanvas cv;
+    int canvas_rows = gh - 1;                /* top plot row = PDF legend */
+    if (braille_init(&cv, gw, canvas_rows) == 0) {
+        braille_rect(&cv, 0, 0, cv.cols * 2, cv.rows * 4);
+        braille_render(&cv, gy + 1, gx);
+        braille_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);
