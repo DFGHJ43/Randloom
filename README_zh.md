@@ -1,11 +1,11 @@
-# 随机数生成器 (RNG)
+# Randloom
 
-一个基于终端界面的 C 语言随机数生成器。
+Randloom 是一个基于终端界面的 C 语言随机数生成器。
 零外部依赖，使用 ANSI 转义序列和 C 标准库；Windows 上统一通过 Win32 控制台 API 渲染，不涉及 ANSI/VT（Windows 10/11 开箱即用；Windows 7/8 建议在 ConEmu 等终端模拟器中运行）。
 
 ## 截图
 
-![RNG TUI 截图](screenshot.png)
+![Randloom TUI 截图](screenshot.png)
 
 ## 功能
 
@@ -31,7 +31,7 @@
 ## 编译
 
 ```bash
-gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
+gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o randloom \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
     src/graph/graph.c src/graph/block.c src/graph/graph_uniform.c \
@@ -44,7 +44,7 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 ## 使用
 
 ```bash
-./rng-tui
+./randloom
 ```
 
 ### 按键说明

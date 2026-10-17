@@ -1,6 +1,6 @@
-# Random Number Generator (RNG)
+# Randloom
 
-An interactive terminal-based random number generator written in C.
+Randloom is an interactive terminal-based random number generator written in C.
 Zero external dependencies — ANSI escape codes plus the C standard library;
 Windows renders via the Win32 console API, with no ANSI/VT involved.
 On Windows 10/11 every console host works out of the box; on Windows 7/8,
@@ -8,7 +8,7 @@ run it inside a terminal emulator such as ConEmu or Cmder.
 
 ## Screenshot
 
-![RNG TUI Screenshot](screenshot.png)
+![Randloom TUI Screenshot](screenshot.png)
 
 ## Features
 
@@ -41,7 +41,7 @@ the ASCII fallback is used.
 ## Build
 
 ```bash
-gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
+gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o randloom \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
     src/graph/graph.c src/graph/block.c src/graph/graph_uniform.c \
@@ -54,7 +54,7 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 ## Usage
 
 ```bash
-./rng-tui
+./randloom
 ```
 
 ### Key Bindings
@@ -115,7 +115,7 @@ src/
   no ANSI/VT involved, no terminal emulator needed.
 - **Windows 7 / 8**: the native console window (cmd.exe's conhost) has
   rendering problems with full-screen TUIs (viewport scrolling / ghost rows),
-  so run rng-tui inside a terminal emulator instead. ConEmu or Cmder are
+  so run randloom inside a terminal emulator instead. ConEmu or Cmder are
   recommended — both are free and support Windows 7 (Windows Terminal
   requires Windows 10, so it is not available there). Any terminal host that
   handles the Win32 console API correctly will do.
