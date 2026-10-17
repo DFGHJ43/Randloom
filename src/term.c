@@ -147,12 +147,13 @@ int term_console_init(void) {
     int mode_changed =
         SetConsoleMode(g_hOut, dwMode & ~ENABLE_WRAP_AT_EOL_OUTPUT) != 0;
 
-    /* The graph is drawn with Unicode braille patterns (U+2800..U+28FF), so
-       the console has to decode stdout as UTF-8; a console left on a legacy
-       code page would show mojibake instead. Switch it for this session and
-       let term_console_restore() put the parent shell's page back. If the
-       switch is refused, term_utf8_supported() reports 0 and the graph
-       falls back to ASCII '#' cells. */
+    /* The graph and frame are drawn with Unicode block elements and
+       box-drawing characters, so the console has to decode stdout as UTF-8;
+       a console left on a legacy code page would show mojibake instead.
+       Switch it for this session and let term_console_restore() put the
+       parent shell's page back. If the switch is refused,
+       term_utf8_supported() reports 0 and the UI falls back to an ASCII
+       frame and '#' graph cells. */
     g_orig_cp = GetConsoleOutputCP();
     if (!SetConsoleOutputCP(CP_UTF8))
         g_orig_cp = 0;                          /* nothing to restore */
@@ -183,8 +184,8 @@ void term_console_restore(void) {
 int term_utf8_supported(void) {
 #ifdef _WIN32
     /* Win32 console output is decoded with the console's *output* code page,
-       not the program's locale, so that page is what decides whether braille
-       patterns survive the trip to the screen. */
+       not the program's locale, so that page is what decides whether block
+       elements and box-drawing characters survive the trip to the screen. */
     return (g_hOut != INVALID_HANDLE_VALUE &&
             GetConsoleOutputCP() == CP_UTF8) ? 1 : 0;
 #else

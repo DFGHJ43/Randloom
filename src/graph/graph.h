@@ -8,8 +8,7 @@
 #define GRAPH_MODULE_H
 
 #include "../tui.h"
-
-extern void term_goto(int row, int col);
+#include "graph_axes.h"
 
 void draw_graph(const TuiState *state);
 

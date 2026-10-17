@@ -5,7 +5,7 @@
  */
 
 #include "graph_poisson.h"
-#include "braille.h"
+#include "block.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -20,15 +20,7 @@ void draw_graph_poisson(const TuiState *state) {
 
     if (lambda <= 0.0) return;
 
-    for (int i = 0; i <= gh; i++) {
-        term_goto(gy + gh - i, gx - 1);
-        putchar('|');
-    }
-
-    term_goto(gy + gh, gx);
-    for (int i = 0; i < gw; i++) putchar('-');
-    term_goto(gy + gh, gx + gw);
-    putchar('>');
+    draw_graph_axes(gx, gy, gh, gw);
 
     char title[48];
     snprintf(title, sizeof(title), "Poisson PMF  lambda=%.1f", lambda);
@@ -55,47 +47,44 @@ void draw_graph_poisson(const TuiState *state) {
     }
     if (pmf_max <= 0.0) pmf_max = 1.0;
 
-    /* Bars are placed in dot space (2 dots per cell column, 4 per cell row):
-       every bar gets one slot of dot columns and can use all four dots of a
-       row for its height, so P(k) spikes keep their shape instead of being
-       rounded to whole cells. The slot is kept an even number of dots wide
-       (and one blank cell is left between bars when the bars are still wide
-       enough), so bar edges land on cell boundaries; only when the
+    /* Bars are placed in half-cell space (one half-cell column per cell, two
+       half-cells per row): every bar gets one slot of cell columns and can
+       use both half-cells of a row for its height, so P(k) spikes keep their
+       shape instead of being rounded to whole cells. One blank cell is left
+       between bars when the bars are still wide enough; only when the
        distribution has more bars than the plot can hold — a large lambda —
-       does the slot shrink to a single dot column and every step-th bar get
+       does the slot shrink to a single cell column and every step-th bar get
        sampled, as the text grid did. The canvas covers rows gy+1..gy+gh-1:
        the top plot row stays free for the PMF value legend at (gy, mx). */
     int canvas_rows = gh - 1;                /* top plot row = PMF legend */
-    int dot_w = 2 * gw;
-    int dot_h = 4 * canvas_rows;
+    int sub_w = gw;
+    int sub_h = 2 * canvas_rows;
 
     int step = 1;
-    if (count > dot_w) step = (count + dot_w - 1) / dot_w;
+    if (count > sub_w) step = (count + sub_w - 1) / sub_w;
     int shown = (count + step - 1) / step;
-    int pitch = dot_w / shown;               /* dot columns per bar, >= 1 */
-    if (pitch >= 2) pitch -= pitch & 1;      /* even pitch -> cell-aligned bars */
+    int pitch = sub_w / shown;               /* cell columns per bar, >= 1 */
     if (pitch < 1) pitch = 1;
-    int gap    = pitch >= 4 ? 2 : 0;         /* one blank cell when roomy */
+    int gap    = pitch >= 2 ? 1 : 0;         /* one blank cell when roomy */
     int bar_dw = pitch - gap;
 
-    int x = (dot_w - (shown * pitch - gap)) / 2;   /* centre the row of bars */
-    x -= x & 1;                                    /* left edges on cell lines */
+    int x = (sub_w - (shown * pitch - gap)) / 2;   /* centre the row of bars */
 
-    BrailleCanvas cv;
-    if (braille_init(&cv, gw, canvas_rows) == 0) {
+    BlockCanvas cv;
+    if (block_init(&cv, gw, canvas_rows) == 0) {
         for (int i = 0; i < count; i += step) {
-            int h = (int)((pmf[i] / pmf_max) * (double)(dot_h - 1) + 0.5);
+            int h = (int)((pmf[i] / pmf_max) * (double)(sub_h - 1) + 0.5);
             if (h < 1 && pmf[i] > 0.0) h = 1;
-            if (h > dot_h - 1) h = dot_h - 1;
+            if (h > sub_h - 1) h = sub_h - 1;
 
             int w = bar_dw;
-            if (x + w > dot_w) w = dot_w - x;
-            if (w > 0) braille_rect(&cv, x, dot_h - h, w, h);
+            if (x + w > sub_w) w = sub_w - x;
+            if (w > 0) block_rect(&cv, x, sub_h - h, w, h);
 
             x += pitch;
         }
-        braille_render(&cv, gy + 1, gx);
-        braille_free(&cv);
+        block_render(&cv, gy + 1, gx);
+        block_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);

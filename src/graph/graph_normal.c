@@ -1,11 +1,11 @@
 ﻿/*
  * graph_normal.c — Normal distribution PDF graph renderer
  *
- * draw_graph_normal: bell curve via Box-Muller PDF (28 sample columns)
+ * draw_graph_normal: bell curve sampled once per plot column
  */
 
 #include "graph_normal.h"
-#include "braille.h"
+#include "block.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -25,15 +25,7 @@ void draw_graph_normal(const TuiState *state) {
 
     if (sigma <= 0.0) return;
 
-    for (int i = 0; i <= gh; i++) {
-        term_goto(gy + gh - i, gx - 1);
-        putchar('|');
-    }
-
-    term_goto(gy + gh, gx);
-    for (int i = 0; i < gw; i++) putchar('-');
-    term_goto(gy + gh, gx + gw);
-    putchar('>');
+    draw_graph_axes(gx, gy, gh, gw);
 
     char title[48];
     snprintf(title, sizeof(title), "Normal PDF  mu=%.1f sigma=%.1f", mu, sigma);
@@ -45,32 +37,32 @@ void draw_graph_normal(const TuiState *state) {
 
     double pdf_max = 1.0 / (sigma * sqrt(2.0 * M_PI));
 
-    /* Bell curve as a filled area on a braille canvas: two dots per cell
-       column, four per cell row. Each column is filled from the baseline up
-       to its curve height, so the outline is 4x smoother vertically than
-       the old '#' columns and the flanks stop looking stair-stepped. The
-       canvas covers rows gy+1..gy+gh-1: the top plot row stays free for the
-       PDF value legend printed at (gy, mx). */
-    BrailleCanvas cv;
+    /* Bell curve as a filled area on a half-block canvas: one half-cell
+       column per character column, two half-cells per row. Each column is
+       filled from the baseline up to its curve height, so the outline is
+       twice as smooth vertically as plain '#' art and the fill is solid.
+       The canvas covers rows gy+1..gy+gh-1: the top plot row stays free for
+       the PDF value legend printed at (gy, mx). */
+    BlockCanvas cv;
     int canvas_rows = gh - 1;                /* top plot row = PDF legend */
-    if (braille_init(&cv, gw, canvas_rows) == 0) {
-        int dot_w = cv.cols * 2;
-        int dot_h = cv.rows * 4;
+    if (block_init(&cv, gw, canvas_rows) == 0) {
+        int sub_w = cv.cols;
+        int sub_h = cv.rows * 2;
 
-        for (int x = 0; x < dot_w; x++) {
-            double t = (double)x / (double)(dot_w - 1);
+        for (int x = 0; x < sub_w; x++) {
+            double t = sub_w > 1 ? (double)x / (double)(sub_w - 1) : 0.0;
             double xv = x_min + (x_max - x_min) * t;
             double z = (xv - mu) / sigma;
             double pdf = exp(-0.5 * z * z) / (sigma * sqrt(2.0 * M_PI));
 
-            int h = (int)((pdf / pdf_max) * (double)(dot_h - 1) + 0.5);
+            int h = (int)((pdf / pdf_max) * (double)(sub_h - 1) + 0.5);
             if (h < 0) h = 0;
-            if (h > dot_h - 1) h = dot_h - 1;
+            if (h > sub_h - 1) h = sub_h - 1;
 
-            braille_vspan(&cv, x, dot_h - 1 - h, dot_h - 1);
+            block_vspan(&cv, x, sub_h - 1 - h, sub_h - 1);
         }
-        braille_render(&cv, gy + 1, gx);
-        braille_free(&cv);
+        block_render(&cv, gy + 1, gx);
+        block_free(&cv);
     }
 
     term_goto(gy + gh + 1, gx);

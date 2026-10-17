@@ -17,24 +17,26 @@ run it inside a terminal emulator such as ConEmu or Cmder.
 - Normal distribution: Box-Muller transform with configurable mean/stddev
 - Bernoulli distribution: 0/1 outcomes with configurable probability p
 - Poisson distribution: Knuth's algorithm with configurable rate λ
-- Real-time graphs of the probability density / mass functions, plotted with
-  Unicode braille patterns (a 2x4 dot matrix per cell) so curves and bars come
-  out smooth instead of stair-stepped
+- Real-time graphs of the probability density / mass functions, drawn with
+  Unicode block elements (█, ▀, ▄) and box-drawing axes, so curves and bars
+  come out solid and smooth instead of stair-stepped
 - Export results to CSV with timestamp filenames
 - Reproducible results: set a fixed Seed (0 = auto, uses current time)
 
 ### Graph rendering
 
-Every graph cell is a braille pattern (U+2800..U+28FF), which packs a 2x4 dot
-matrix into a single character: the plot gets twice the horizontal and four
-times the vertical resolution of plain `#` art, and because a character cell is
-roughly twice as tall as it is wide, the dots land on a near-square grid.
-Axes, labels and the value readout stay ASCII.
+The plot is a half-block canvas: every character cell holds two vertically
+stacked half-cells, rendered with `█` (full block), `▀` (upper half) and `▄`
+(lower half). That gives a 1x2 sub-cell grid — twice the vertical resolution of
+plain `#` art — while keeping the fill solid instead of dotted. Axes use
+box-drawing characters (`│`, `─`, `└`, `→`) and the frame uses the
+`┌ ┬ ┐ ├ ┤ └ ┴ ┘` family; labels and the value readout stay ASCII.
 
-This needs a font that covers the Braille Patterns block — most monospace fonts
-do. Where UTF-8 cannot reach the screen, the graph degrades to one `#` per
-touched cell: on Windows the console output code page is switched to UTF-8 for
-the session, and if that is refused, `#` cells are used.
+This needs a font that covers the Block Elements and Box Drawing ranges — most
+monospace fonts do. Where UTF-8 cannot reach the screen, the graph degrades to
+one `#` per touched cell and the frame to ASCII `+ - |`: on Windows the console
+output code page is switched to UTF-8 for the session, and if that is refused,
+the ASCII fallback is used.
 
 ## Build
 
@@ -42,7 +44,7 @@ the session, and if that is refused, `#` cells are used.
 gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
     src/tui.c src/term.c src/controls.c src/random.c \
     src/stats.c src/output.c \
-    src/graph/graph.c src/graph/braille.c src/graph/graph_uniform.c \
+    src/graph/graph.c src/graph/block.c src/graph/graph_uniform.c \
     src/graph/graph_normal.c src/graph/graph_bernoulli.c \
     src/graph/graph_poisson.c -lm
 ```
@@ -91,13 +93,15 @@ gcc -Wall -Wextra -std=c99 -pedantic -Isrc -o rng-tui \
 src/
 ├── tui.c/h                     Main event loop, frame rendering, results panel
 ├── term.c/h                    Terminal control (Win32 console API on Windows, ANSI elsewhere) + keyboard input
+├── chars.h                     UTF-8 glyph constants for blocks and box drawing
 ├── controls.c/h                Left panel: parameter fields, field editing
 ├── random.c/h                  Random number generation (xoshiro256** + SplitMix64)
 ├── stats.c/h                   Statistics (min, max, mean, stddev)
 ├── output.c/h                  Output to console / CSV file
 └── graph/
     ├── graph.c/h               Graph area dispatch (clear + route)
-    ├── braille.c/h             Braille dot-matrix canvas used by the graphs
+    ├── graph_axes.h            Shared box-drawing axis renderer
+    ├── block.c/h               Half-block canvas used by the graphs
     ├── graph_uniform.c/h       Uniform distribution PDF graph
     ├── graph_normal.c/h        Normal distribution PDF bell curve
     ├── graph_bernoulli.c/h     Bernoulli distribution PMF dual-bar
