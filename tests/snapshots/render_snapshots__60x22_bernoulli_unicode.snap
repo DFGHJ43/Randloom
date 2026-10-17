@@ -1,0 +1,26 @@
+---
+source: tests/render_snapshots.rs
+expression: "ui::render_to_string(&state_for(dist), 60, 22, true)"
+---
+┌──Randloom──────┬───────────────────────┬─────────────────┐
+│                │                       │                 │
+│                │  Distribution Graph   │  Results        │
+│Distribution:   │  Bernoulli PMF  p=0.35│                 │
+│  [ ] Uniform   │1                      │  1: 1           │
+│  [ ] Normal    │ │                     │  2: 0           │
+│  [*] Bernoulli │ │                     │  3: 1           │
+│  [ ] Poisson   │ │  0.65               │  4: 1           │
+│                │ │  ████       0.35    │  5: 0           │
+│Count:    [8   ]│ │  ████       ▄▄▄▄    │  6: 0           │
+│Seed:     [42  ]│ │  ████       ████    │  7: 1           │
+│                │ │  ████       ████    │  8: 0           │
+│                │0└───────────────────→ │                 │
+│                │     0          1      │                 │
+│                │                       │                 │
+│Prob:     [0.35]│                       │                 │
+│                │                       │                 │
+│[ Generate ]  G │                       │                 │
+│[ Export   ]  E │                       │                 │
+│[ Quit     ]  Q │                       │                 │
+│Gen 8 bernoulli numbers. Seed 42.                         │
+└────────────────┴───────────────────────┴─────────────────┘

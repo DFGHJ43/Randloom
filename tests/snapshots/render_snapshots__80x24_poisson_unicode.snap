@@ -1,0 +1,28 @@
+---
+source: tests/render_snapshots.rs
+expression: "ui::render_to_string(&state_for(dist), 80, 24, true)"
+---
+┌──Randloom────────────┬────────────────────────────────┬──────────────────────┐
+│                      │                                │                      │
+│                      │  Distribution Graph            │  Results             │
+│Distribution:         │  Poisson PMF  lambda=3.0       │                      │
+│  [ ] Uniform (U)     │0.224                           │  1: 2                │
+│  [ ] Normal (N)      │ │        ▄ ▄                   │  2: 4                │
+│  [ ] Bernoulli (B)   │ │        █ █                   │  3: 3                │
+│  [*] Poisson (P)     │ │        █ █ ▄                 │  4: 1                │
+│                      │ │      ▄ █ █ █                 │  5: 5                │
+│Count:    [8         ]│ │      █ █ █ █                 │  6: 2                │
+│Seed:     [42        ]│ │      █ █ █ █ █               │  7: 3                │
+│                      │ │      █ █ █ █ █               │  8: 3                │
+│                      │ │    █ █ █ █ █ █ █             │                      │
+│                      │ │    █ █ █ █ █ █ █ █ ▄ ▄       │                      │
+│                      │ └────────────────────────────→ │                      │
+│                      │  0        L                 9  │                      │
+│Lambda:   [3.0       ]│                                │                      │
+│[ Generate ]  G       │                                │                      │
+│[ Export   ]  E       │                                │                      │
+│[ Quit     ]  Q       │                                │                      │
+│                      │                                │                      │
+│                      │                                │                      │
+│Gen 8 poisson numbers. Seed 42.                                               │
+└──────────────────────┴────────────────────────────────┴──────────────────────┘

@@ -1,0 +1,6 @@
+---
+source: tests/render_snapshots.rs
+expression: "ui::too_small(40, 18, message).to_string_trimmed()"
+---
+Terminal too small: 40x18. Need at least
+ 60x22.

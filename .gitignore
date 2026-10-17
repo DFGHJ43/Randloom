@@ -1,24 +1,23 @@
-# Object files
-*.o
-/obj/
+# Rust build output
+/target/
+/.cargo-home/
 
-# Executable
-randloom
-randloom.exe
+# Pending insta snapshots
+*.snap.new
 
-# Output files
-*.txt
-!CMakeLists.txt
+# Generated data
 *.csv
 
-# IDE
+# IDE / agent settings
 .idea/
 .vscode/
 .claude/
 
-# Build directories
+# Legacy C build output (removed with legacy/ in phase 6)
 build/
 cmake-build-debug/
-
-# Planning docs (not tracked)
-docs/rng-upgrade-plan.md
+*.o
+legacy/c/tools/dump_sequences
+legacy/c/tools/dump_sequences.exe
+randloom
+randloom.exe

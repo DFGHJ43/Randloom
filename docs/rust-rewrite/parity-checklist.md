@@ -1,0 +1,102 @@
+# C → Rust parity checklist
+
+This checklist tracks the behavior the Rust rewrite must preserve from
+`legacy/c/`, plus the small number of intentional deviations.
+
+## Module mapping
+
+| C | Rust |
+| --- | --- |
+| `tui.c/h` | `run.rs`, `app.rs`, `config.rs`, `input.rs` |
+| `term.c/h` | `term/{mod,keys,paint,signals}.rs` (crossterm) |
+| `chars.h` | `ui/glyphs.rs` |
+| `controls.c/h` | `ui/controls.rs`, `config.rs`, `app.rs` |
+| `random.c/h` | `rng.rs`, `dist/{uniform,normal,bernoulli,poisson}.rs` |
+| `stats.c/h` | `stats.rs` |
+| `output.c/h` | `export.rs`, `fmt.rs` |
+| `graph/graph.c/h` | `ui/graph/mod.rs` |
+| `graph/graph_axes.h` | `ui/graph/axes.rs` |
+| `graph/block.c/h` | `ui/graph/canvas.rs`, `ui/frame.rs` |
+| `graph/graph_*.c/h` | `ui/graph/{uniform,normal,bernoulli,poisson}.rs` |
+| `CMakeLists.txt` | `Cargo.toml` (legacy CMake kept in `legacy/c/`) |
+
+## Behavior checklist
+
+- [x] Layout: content width split `22/32/remainder`, `gy=4`,
+      `gh=max(rows-14,6)`, `gpx=mx+2`, `gpw=max(mw-4,10)`,
+      `status_y=rows-2`, `result_max_show=max(rows-14,1)`.
+- [x] Minimum terminal 60x22; too-small startup message; runtime overlay and
+      wait-for-resize.
+- [x] Box, titles, status bar, focus reverse video and bold status style.
+- [x] Distribution selector labels/hints and radio state.
+- [x] Eight fields in Tab order Count → Seed → visible distribution parameters;
+      invisible fields skipped and cleared.
+- [x] Field labels, bracket geometry, value width `max(lw-12,1)`, 31-char cap.
+- [x] Seed accepts digits only; numeric fields accept digits, `-`, `.`.
+- [x] Parsing/clamps: count 1..1000, prob 0..1, stddev default 1, lambda default
+      1 and max 1e9, seed saturation.
+- [x] Results: clear rows, `(no results)`, `%3d: %g`, scroll clamp,
+      `(N total, arrows)` hint truncated to panel width.
+- [x] Graph area clearing, axes, titles, value legends and x-axis labels.
+- [x] Uniform: flat filled rectangle; labels min/max; PDF legend.
+- [x] Normal: bell curve sampled per half-cell column; mu/sigma title and
+      labels; PDF legend.
+- [x] Bernoulli: dual bars with C proportions, labels and probability values.
+- [x] Poisson: PMF bars, 64-entry PMF cap, sampling step when bars overflow,
+      `k_max`/lambda labels, PMF legend.
+- [x] Unicode block/box glyphs and ASCII fallback (`#`, `+ - | >`).
+- [x] Keys: G/E, U/N/B/P, Tab, Up/Down, Left/Right, Backspace, Q/Esc; Ctrl+C
+      quits and restores.
+- [x] Generate: parse fields, count clamp, auto seed, status line with actual
+      seed and `(auto)`, reset scroll.
+- [x] Export: empty-result message, timestamped filename, one `%g` value per
+      line, failure message.
+- [x] Engine and integer distributions match C golden vectors exactly.
+- [x] Normal golden vectors match within floating-point tolerance.
+- [x] Terminal restore on normal exit, Ctrl+C, Unix SIGINT/SIGTERM, panic,
+      and error paths.
+- [x] TTY check (stdin/stdout) before entering raw mode.
+- [x] Terminal resize while idle and while the too-small overlay is shown.
+
+## Intentional deviations
+
+| Deviation | Reason |
+| --- | --- |
+| Windows 10+ only | Rust 1.78+ baseline; Windows 7/8 users keep the `master` C build. |
+| Runtime dependencies `crossterm`/`chrono` (plus `signal-hook` on Unix) | Replaces platform ANSI/Win32/termios and local-time code. README no longer claims zero dependencies; RNG remains dependency-free. |
+| Alternate screen | Exiting returns to the previous shell content instead of clearing the main screen. Running UI is unchanged. |
+| Unicode always used unless `RANDLOOM_ASCII=1` | Rust/crossterm writes Unicode through the console; Windows code-page probing is no longer needed. The ASCII renderer remains for compatibility/tests. |
+| Normal values are tolerance-matched, not bit-matched, across platforms | `ln`/`cos` come from the platform math library. Integer distributions remain exact. |
+| Result lines are clipped to the panel width | Prevents long `%g` values from overwriting the border at 60 columns. |
+| CSV write errors are reported | C ignored write errors after a successful open. |
+| `i32`/`u64` parsing clamps/saturates explicitly | Avoids C implementation-defined overflow conversions while preserving normal input behavior. |
+| C `output_console`/`output_stats` helpers are not ported | They were unused by the TUI; `stats` remains a library API for future non-interactive use. |
+| No CLI subcommands | Out of scope for the parity rewrite. |
+
+## Automated verification
+
+- `tests/rng_golden.rs`: raw `u64` and `f64` bit sequences from C.
+- `tests/distributions.rs`: exact uniform/Bernoulli/Poisson golden vectors,
+  normal tolerance, and statistical sanity checks.
+- `tests/fmt.rs`: `%g` cases captured from C `printf`.
+- `tests/config.rs`, `tests/app_keys.rs`, `tests/export.rs`: parsing,
+  visibility, editing, key actions, scrolling, filenames and CSV contents.
+- `tests/render_snapshots.rs`: 80x24 and 60x22 layouts for all distributions,
+  Unicode and ASCII, plus focus/empty/scroll states.
+- `src/ui/{layout,frame,graph/canvas}.rs` unit tests: geometry and half-cell
+  bounds.
+
+## Manual smoke test
+
+1. Windows 10/11 (Windows Terminal and classic console) and Linux/macOS.
+2. Generate all four distributions; compare the graph and controls against
+   `legacy/c` at 80x24 and 60x22.
+3. Fixed seed 42 twice → identical integer results; seed 0 twice → status shows
+   different auto seeds and results differ; Tab order/edit/backspace work.
+4. Resize to below 60x22 and back; the overlay appears/disappears and no stale
+   frame remains.
+5. Export CSV, verify contents; remove write permission/target a directory and
+   verify the "Export failed!" status.
+6. Quit with Q, Esc, Ctrl+C and SIGTERM; verify cursor/raw mode/alternate
+   screen are restored. Trigger a panic only in a throwaway build to verify the
+   restore hook.
