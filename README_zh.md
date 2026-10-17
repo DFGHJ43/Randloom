@@ -139,10 +139,9 @@ tests/
 ├── snapshots/                  insta UI 快照
 └── *.rs                        对照、统计、配置、应用与导出测试
 docs/rust-rewrite/              架构、对照清单、迁移说明
-legacy/c/                       原 C 实现（临时参考）
 ```
 
-`legacy/c/` 仅用于重写期间的对照和生成 golden 数据，完成 parity 验收后删除。
+原 C 实现保留在 `master` 分支；Rust 重写树中不再包含 C 源码。
 
 ## 平台说明
 

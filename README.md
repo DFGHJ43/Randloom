@@ -149,12 +149,10 @@ tests/
 ├── snapshots/                  insta UI snapshots
 └── *.rs                        Parity, statistics, config, app and export tests
 docs/rust-rewrite/              Architecture, parity checklist, migration notes
-legacy/c/                       Original C implementation (temporary reference)
 ```
 
-The `legacy/c/` tree is removed once the Rust parity checklist is complete; it
-is kept only so the rewrite can be validated against the original binary and
-to regenerate golden vectors.
+The original C implementation remains available on the `master` branch; the
+Rust rewrite tree contains no C sources.
 
 ## Platform Notes
 

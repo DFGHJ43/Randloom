@@ -1,7 +1,11 @@
 # C → Rust parity checklist
 
-This checklist tracks the behavior the Rust rewrite must preserve from
-`legacy/c/`, plus the small number of intentional deviations.
+This checklist tracks the behavior the Rust rewrite preserves from the original
+C implementation (available on `master`), plus the small number of intentional
+deviations.
+
+> Manual TUI smoke test: completed by the maintainer on 2026-10-17 on
+> Windows 10/11 before the legacy C tree was removed.
 
 ## Module mapping
 
@@ -18,7 +22,7 @@ This checklist tracks the behavior the Rust rewrite must preserve from
 | `graph/graph_axes.h` | `ui/graph/axes.rs` |
 | `graph/block.c/h` | `ui/graph/canvas.rs`, `ui/frame.rs` |
 | `graph/graph_*.c/h` | `ui/graph/{uniform,normal,bernoulli,poisson}.rs` |
-| `CMakeLists.txt` | `Cargo.toml` (legacy CMake kept in `legacy/c/`) |
+| `CMakeLists.txt` | `Cargo.toml` (C reference on `master`) |
 
 ## Behavior checklist
 
@@ -90,7 +94,7 @@ This checklist tracks the behavior the Rust rewrite must preserve from
 
 1. Windows 10/11 (Windows Terminal and classic console) and Linux/macOS.
 2. Generate all four distributions; compare the graph and controls against
-   `legacy/c` at 80x24 and 60x22.
+   the C build from `master` at 80x24 and 60x22.
 3. Fixed seed 42 twice → identical integer results; seed 0 twice → status shows
    different auto seeds and results differ; Tab order/edit/backspace work.
 4. Resize to below 60x22 and back; the overlay appears/disappears and no stale

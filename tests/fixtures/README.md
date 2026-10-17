@@ -1,14 +1,15 @@
 # Golden fixture provenance
 
-These files were generated from the C reference implementation with
-`legacy/c/tools/dump_sequences.c` on Windows using MinGW GCC. The harness
-includes `legacy/c/src/random.c` directly so it can call the static engine
-helpers (`next_u64`, `next_double`, `next_double_open`) as well as the public
-distribution functions.
+These files were generated from the original C implementation (available on
+`master`) with a temporary harness on Windows using MinGW GCC. The harness
+included the C reference's `src/random.c` directly so it could call the static
+engine helpers (`next_u64`, `next_double`, `next_double_open`) as well as the
+public distribution functions. The harness is preserved at commit `2ac8793`
+under `legacy/c/tools/dump_sequences.c`; regeneration commands are in
+`docs/rust-rewrite/migration.md`.
 
-Regeneration commands are in `docs/rust-rewrite/migration.md`. The files are
-plain whitespace-separated numeric values (one per line), committed with LF
-line endings via `.gitattributes`.
+The files are plain whitespace-separated numeric values (one per line),
+committed with LF line endings via `.gitattributes`.
 
 ## Parity policy
 

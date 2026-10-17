@@ -12,12 +12,3 @@
 .idea/
 .vscode/
 .claude/
-
-# Legacy C build output (removed with legacy/ in phase 6)
-build/
-cmake-build-debug/
-*.o
-legacy/c/tools/dump_sequences
-legacy/c/tools/dump_sequences.exe
-randloom
-randloom.exe

@@ -7,7 +7,8 @@
 - Separate the terminal-free domain/rendering logic from the crossterm
   terminal layer so most of the app can be tested headlessly.
 - Keep `src/` free of `unsafe` (`#![forbid(unsafe_code)]`).
-- Retain the C implementation under `legacy/c/` until parity is verified.
+- Preserve the ability to compare against and regenerate data from the original
+  C implementation, which remains available on the `master` branch.
 
 ## Package layout
 
