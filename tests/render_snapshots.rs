@@ -210,6 +210,11 @@ fn snapshot_uniform_continuous_layouts() {
 
 #[test]
 fn uniform_mode_checkbox_tracks_the_mode() {
+    // The mode row sits one blank row below the four uniform fields
+    // (fields occupy rows y+6..=y+9 = 9..=12 on a standard 80x24 layout),
+    // i.e. row 14.
+    const MODE_ROW: i32 = 14;
+
     let mut state = uniform_state();
     let layout = ui::Layout::compute(80, 24);
     let row = |frame: &ui::Frame, y: i32| -> String {
@@ -217,27 +222,36 @@ fn uniform_mode_checkbox_tracks_the_mode() {
             .map(|x| frame.get(layout.lx + x, y).expect("control row cell").ch)
             .collect()
     };
+    let trimmed = |frame: &ui::Frame| row(frame, MODE_ROW).trim_end().to_string();
 
     let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
-    assert!(row(&frame, 8).contains("[ ] Continuous (C)"));
+    // Field-style row: label aligned with Count/Seed/Min/Max, checkbox at the
+    // end of the label.
+    assert_eq!(trimmed(&frame), "Continuous(C): [ ]");
 
     state.params.uniform_mode = UniformMode::Continuous;
     let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
-    assert!(row(&frame, 8).contains("[x] Continuous (C)"));
+    assert_eq!(trimmed(&frame), "Continuous(C): [x]");
 
     // Other distributions do not show the uniform mode row.
-    state.dist = DistType::Normal;
-    let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
-    assert_eq!(row(&frame, 8).trim(), "");
+    for dist in [DistType::Normal, DistType::Bernoulli, DistType::Poisson] {
+        state.dist = dist;
+        let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
+        assert!(
+            !row(&frame, MODE_ROW).contains("Continuous"),
+            "{dist:?} must not show the uniform mode row"
+        );
+    }
 }
 
 #[test]
-fn uniform_mode_hint_is_only_drawn_when_it_fits() {
-    // Left-panel widths 17, 18 and 19 cannot hold the 18-character
-    // "[x] Continuous (C)" row, so the hint must be omitted rather than
-    // clipped. 80x24 has a 22-column panel and shows the hint.
+fn uniform_mode_row_fits_or_drops_the_key_hint() {
+    // The full row is 18 characters. Panels narrower than that fall back to
+    // "Continuous: [x]" (key hint dropped) instead of clipping the row.
+    const MODE_ROW: i32 = 14;
     for (cols, rows) in [
         (60, 22),
+        (64, 24),
         (67, 24),
         (68, 24),
         (70, 24),
@@ -250,18 +264,21 @@ fn uniform_mode_hint_is_only_drawn_when_it_fits() {
         state.params.uniform_mode = UniformMode::Continuous;
         let frame = ui::render(&state, &layout, &ui::GlyphSet::new(true));
         let row: String = (0..layout.lw)
-            .map(|x| frame.get(layout.lx + x, 8).expect("mode row cell").ch)
+            .map(|x| {
+                frame
+                    .get(layout.lx + x, MODE_ROW)
+                    .expect("mode row cell")
+                    .ch
+            })
             .collect();
         let row = row.trim_end();
 
-        assert!(row.contains("Continuous"), "{cols}x{rows}: {row:?}");
-        assert!(
-            !row.contains('(') || row.ends_with("(C)"),
-            "{cols}x{rows}: clipped hint {row:?}"
-        );
-        if layout.lw >= 20 {
-            assert!(row.ends_with("Continuous (C)"), "{cols}x{rows}: {row:?}");
-        }
+        let expected = if layout.lw >= 18 {
+            "Continuous(C): [x]"
+        } else {
+            "Continuous: [x]"
+        };
+        assert_eq!(row, expected, "{cols}x{rows} (lw={})", layout.lw);
     }
 }
 

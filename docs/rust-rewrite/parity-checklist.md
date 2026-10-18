@@ -51,10 +51,12 @@ deviations.
 - [x] Uniform continuous mode: real `[min, max)` using the 53-bit `next_f64`
       stream; reversed bounds swapped; zero-width range returns the bound;
       values stay strictly below `max` even for adjacent `f64` bounds.
-- [x] `C` toggles the uniform mode only for Uniform; controls checkbox row
-      `[ ]`/`[x] Continuous (C)` (the `(C)` hint is omitted, never clipped,
-      when the left panel cannot fit the 18-cell row); status messages
-      `Uniform mode: ...` and `Gen N continuous uniform numbers. Seed ...`.
+- [x] `C` toggles the uniform mode only for Uniform; field-aligned checkbox row
+      `Continuous(C): [ ]`/`Continuous(C): [x]` one blank row below the
+      parameter fields, separate from the distribution selector. Full 18-cell
+      label at wide panels, `Continuous: [ ]`/`[x]` fallback (key hint dropped,
+      never clipped) at narrow ones; status messages `Uniform mode: ...` and
+      `Gen N continuous uniform numbers. Seed ...`.
 - [x] Uniform: flat filled rectangle; integer labels min/max and two-decimal
       PDF legend; continuous `%g` title/labels and a `%g` legend for the PDF
       value `1 / (max - min)`.
@@ -87,7 +89,7 @@ deviations.
 | Alternate screen | Exiting returns to the previous shell content instead of clearing the main screen. Running UI is unchanged. |
 | Unicode always used unless `RANDLOOM_ASCII=1` | Rust/crossterm writes Unicode through the console; Windows code-page probing is no longer needed. The ASCII renderer remains for compatibility/tests. |
 | Normal values are tolerance-matched, not bit-matched, across platforms | `ln`/`cos` come from the platform math library. Integer distributions remain exact. |
-| Uniform continuous mode | New extension not present in the C reference; adds a checkbox row under the Uniform selector. Integer mode remains the default, so sampling output and golden vectors are unchanged. |
+| Uniform continuous mode | New extension not present in the C reference; adds a checkbox row below the Uniform parameter fields. Integer mode remains the default, so sampling output and golden vectors are unchanged. |
 | Normal and continuous uniform results use six decimals (scientific for non-zero values below `1e-6`) | C used `%g` for every result; stable decimal places keep continuous values readable. Integer-valued distributions retain `%g`. |
 | CSV follows the per-distribution result style | C wrote `%g` for every value; matching the TUI avoids a second formatting rule. |
 | Result lines are clipped to the panel width | Prevents long values from overwriting the border at 60 columns. |

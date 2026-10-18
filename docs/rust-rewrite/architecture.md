@@ -82,10 +82,12 @@ Rules:
   touched cell and `+ - | >` for the frame/axes. The uniform renderer branches
   on the mode: integer mode keeps the C panel; continuous mode uses `%g` bounds
   and a `%g` density legend for the PDF value `1 / (max - min)`.
-- The controls panel shows a mode checkbox row below the distribution selector
-  only for Uniform (`[ ]`/`[x] Continuous (C)`; the 18-cell row includes the
-  `(C)` hint only when the left panel is wide enough, otherwise the hint is
-  omitted rather than clipped); `C` toggles it only while Uniform is selected.
+- The controls panel shows a mode checkbox row one blank row below the last
+  parameter field (between the fields and the action buttons) only for Uniform,
+  aligned with the field labels: `Continuous(C): [ ]` / `Continuous(C): [x]`.
+  The 18-cell row includes the `(C)` key hint only when the left panel is wide
+  enough; narrower panels fall back to `Continuous: [ ]`/`[x]` rather than
+  clipping. `C` toggles the mode only while Uniform is selected.
 - `ui::render_to_string` is the headless snapshot entry point; styles are
   tested separately through `Frame` cells.
 

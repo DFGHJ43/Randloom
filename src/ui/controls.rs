@@ -15,20 +15,20 @@ fn draw_option(frame: &mut Frame, layout: &Layout, row: i32, dist: DistType, sel
     frame.put_padded(layout.lx + 2, row, layout.lw - 2, &text, Style::PLAIN);
 }
 
-/// Checkbox row for the uniform integer/continuous mode, shown between the
-/// distribution selector and the parameter fields.
+/// Checkbox row for the uniform integer/continuous mode. It is aligned with
+/// the parameter field labels (same left edge) and drawn one blank row below
+/// the last field: `Continuous(C): [ ]` / `Continuous(C): [x]`.
 fn draw_uniform_mode(frame: &mut Frame, layout: &Layout, row: i32, mode: UniformMode) {
     let mark = if mode.is_continuous() { "[x]" } else { "[ ]" };
-    let short = format!("{mark} Continuous");
-    let long = format!("{mark} Continuous (C)");
-    // Only append the key hint when the full row fits; never draw a clipped
-    // "(C" fragment at intermediate widths.
-    let text = if layout.lw - 2 >= long.len() as i32 {
-        long
+    let full = format!("Continuous(C): {mark}");
+    let short = format!("Continuous: {mark}");
+    // Drop the `(C)` key hint on narrow panels rather than clipping the row.
+    let text = if layout.lw >= full.chars().count() as i32 {
+        &full
     } else {
-        short
+        &short
     };
-    frame.put_padded(layout.lx + 2, row, layout.lw - 2, &text, Style::PLAIN);
+    frame.put_str(layout.lx, row, text, layout.lw);
 }
 
 pub fn draw(frame: &mut Frame, state: &AppState, layout: &Layout) {
@@ -47,14 +47,9 @@ pub fn draw(frame: &mut Frame, state: &AppState, layout: &Layout) {
         );
     }
 
-    // Row y+5 is free between the selector and the parameter block; it only
-    // carries content for the uniform distribution.
-    if state.dist == DistType::Uniform {
-        draw_uniform_mode(frame, layout, y + 5, state.params.uniform_mode);
-    }
-
     let value_w = (layout.lw - 12).max(1);
     let mut ry = y + 6;
+    let mut last_field_row = ry - 1;
 
     for id in FieldId::ALL {
         if !id.visible(state.dist) {
@@ -80,7 +75,14 @@ pub fn draw(frame: &mut Frame, state: &AppState, layout: &Layout) {
         );
         frame.set(x + 11 + value_w, ry, ']');
 
+        last_field_row = ry;
         ry += 1;
+    }
+
+    // The uniform mode checkbox lives below the parameter fields, separated
+    // from them by one blank row, between the fields and the action buttons.
+    if state.dist == DistType::Uniform {
+        draw_uniform_mode(frame, layout, last_field_row + 2, state.params.uniform_mode);
     }
 
     // Clear any rows the field block did not cover.
